@@ -6,7 +6,7 @@ import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
-import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Link as LinkIcon, Copy, ExternalLink, Bell } from 'lucide-react';
 import { locations } from '../data/locations';
 
 export default function Payments() {
@@ -45,7 +45,9 @@ export default function Payments() {
   const [editAdminTransfer, setEditAdminTransfer] = useState('');
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [editReceiptUrl, setEditReceiptUrl] = useState('');
+  const [editTransferPic, setEditTransferPic] = useState('');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [submissions, setSubmissions] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Bulk Selection State
@@ -64,7 +66,19 @@ export default function Payments() {
 
   useEffect(() => {
     fetchProjects();
+    fetchSubmissions();
   }, [user, profile]);
+
+  const fetchSubmissions = async () => {
+    try {
+      const q = query(collection(db, 'payment_submissions'), where('status', '==', 'pending'));
+      const snapshot = await getDocs(q);
+      const subData = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+      setSubmissions(subData);
+    } catch (error) {
+      console.error("Error fetching submissions:", error);
+    }
+  };
 
   const fetchProjects = async () => {
     if (!user || !profile) return;
@@ -158,6 +172,7 @@ export default function Payments() {
     setEditAmount(details.amount || '');
     setEditAdminTransfer(details.adminTransfer || '');
     setEditReceiptUrl(details.receiptUrl || '');
+    setEditTransferPic(details.transferpic || '');
     setEditReceiptFile(null);
     setShowEditModal(true);
   };
@@ -267,7 +282,8 @@ export default function Payments() {
           ...currentData, 
           amount: editAmount,
           adminTransfer: editAdminTransfer,
-          receiptUrl: finalReceiptUrl
+          receiptUrl: finalReceiptUrl,
+          transferpic: editTransferPic
         } 
       };
       const paymentsString = JSON.stringify(updatedPayments);
@@ -276,6 +292,14 @@ export default function Payments() {
       await updateDoc(projRef, { payments: paymentsString });
       
       setSelectedProject({ ...selectedProject, payments: paymentsString });
+
+      // Clear any pending submissions for this institution
+      const pendingSubmissions = submissions.filter(s => s.institutionId === editingInst.id);
+      for (const sub of pendingSubmissions) {
+        await updateDoc(doc(db, 'payment_submissions', sub.id), { status: 'approved' });
+      }
+      fetchSubmissions();
+
       showToast("Payment details saved.", "success");
       setShowEditModal(false);
     } catch (error) {
@@ -325,6 +349,9 @@ export default function Payments() {
       } else if (sortColumn === 'amount') {
         aValue = Number(getPaymentDetails(a.id).amount) || 0;
         bValue = Number(getPaymentDetails(b.id).amount) || 0;
+      } else if (sortColumn === 'transferpic') {
+        aValue = getPaymentDetails(a.id).transferpic || '';
+        bValue = getPaymentDetails(b.id).transferpic || '';
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -564,6 +591,12 @@ export default function Payments() {
                     >
                       Payment Status <SortIcon column="status" />
                     </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort('transferpic')}
+                    >
+                      Transfer PIC <SortIcon column="transferpic" />
+                    </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -583,7 +616,14 @@ export default function Payments() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{inst.kabupaten}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{inst.kecamatan}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{inst.desa}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                          <div className="flex items-center">
+                            {inst.desa}
+                            {submissions.some(s => s.institutionId === inst.id) && (
+                              <Bell className="w-3 h-3 ml-2 text-amber-500 animate-bounce" />
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                           {inlineEditId === inst.id ? (
                             <input
@@ -610,6 +650,9 @@ export default function Payments() {
                               {details.amount ? `Rp ${Number(details.amount).toLocaleString('id-ID')}` : '-'}
                             </div>
                           )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {details.transferpic || '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
@@ -638,6 +681,17 @@ export default function Payments() {
                               title="Edit Payment Details"
                             >
                               <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const url = `${window.location.origin}/pay-receipt/${selectedProject.id}/${inst.id}`;
+                                navigator.clipboard.writeText(url);
+                                showToast("Registration link copied to clipboard!", "success");
+                              }}
+                              className="text-emerald-600 hover:text-emerald-900 bg-emerald-50 p-1.5 rounded-md transition-colors"
+                              title="Copy Self-Registration Link"
+                            >
+                              <LinkIcon className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -852,6 +906,42 @@ export default function Payments() {
                 <p className="text-sm text-slate-500 mb-4">Desa {editingInst.desa}, {editingInst.kecamatan}</p>
                 
                 <form onSubmit={handleSavePaymentDetails} className="space-y-4">
+                  {submissions.filter(s => s.institutionId === editingInst.id).map(sub => (
+                    <div key={sub.id} className="p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="text-sm font-bold text-amber-800 flex items-center">
+                          <Bell className="w-4 h-4 mr-2" /> Pending Submission
+                        </h4>
+                        <span className="text-xs text-amber-600">{new Date(sub.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="space-y-1 text-sm text-amber-900">
+                        <div><span className="font-semibold">PIC:</span> {sub.transferpic}</div>
+                        <div><span className="font-semibold">Amount:</span> Rp {Number(sub.amount).toLocaleString('id-ID')}</div>
+                        <div className="mt-2 text-center">
+                          <a 
+                            href={sub.receiptUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" /> View Receipt
+                          </a>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditAmount(sub.amount.toString());
+                          setEditTransferPic(sub.transferpic);
+                          setEditReceiptUrl(sub.receiptUrl);
+                          showToast("Submission data applied. Click Save to confirm.", "success");
+                        }}
+                        className="w-full mt-3 py-1.5 bg-amber-200 text-amber-800 rounded-lg text-xs font-bold hover:bg-amber-300 transition-colors"
+                      >
+                        Use This Data
+                      </button>
+                    </div>
+                  ))}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
                     <input
@@ -869,6 +959,16 @@ export default function Payments() {
                       value={editAdminTransfer}
                       onChange={(e) => setEditAdminTransfer(e.target.value)}
                       placeholder="Enter admin transfer details"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Transfer PIC</label>
+                    <input
+                      type="text"
+                      value={editTransferPic}
+                      onChange={(e) => setEditTransferPic(e.target.value)}
+                      placeholder="Name of person who transferred"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>

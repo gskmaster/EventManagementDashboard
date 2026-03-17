@@ -9,7 +9,10 @@ import Payments from './pages/Payments';
 import Attendance from './pages/Attendance';
 import Projects from './pages/Projects';
 import Users from './pages/Users';
+import Speakers from './pages/Speakers';
 import PublicRegistration from './pages/PublicRegistration';
+import PublicSpeakerRegistration from './pages/PublicSpeakerRegistration';
+import PublicPaymentRegistration from './pages/PublicPaymentRegistration';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { user, profile, loading } = useAuth();
@@ -41,6 +44,8 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register/:projectId" element={<PublicRegistration />} />
+            <Route path="/register-speaker/:projectId" element={<PublicSpeakerRegistration />} />
+            <Route path="/pay-receipt/:projectId/:institutionId" element={<PublicPaymentRegistration />} />
             <Route 
               path="/" 
               element={
@@ -78,6 +83,14 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin', 'event_manager', 'lo']}>
                   <Attendance />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/speakers" 
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                  <Speakers />
                 </ProtectedRoute>
               } 
             />

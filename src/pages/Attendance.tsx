@@ -516,25 +516,25 @@ export default function Attendance() {
                           {person.attendanceStatus !== 'present' && (
                             <button 
                               onClick={() => updateAttendance(person.id, 'present')}
-                              className="text-green-600 hover:text-green-900 flex items-center"
+                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                             >
-                              <UserCheck className="w-5 h-5 mr-1" /> Check In
+                              <UserCheck className="w-4 h-4 mr-1.5" /> Check In
                             </button>
                           )}
                           {person.attendanceStatus !== 'absent' && (
                             <button 
                               onClick={() => updateAttendance(person.id, 'absent')}
-                              className="text-red-600 hover:text-red-900 flex items-center"
+                              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                             >
-                              <UserX className="w-5 h-5 mr-1" /> Mark Absent
+                              <UserX className="w-4 h-4 mr-1.5" /> Absent
                             </button>
                           )}
                           {person.attendanceStatus !== 'registered' && (
                             <button 
                               onClick={() => updateAttendance(person.id, 'registered')}
-                              className="text-blue-600 hover:text-blue-900 flex items-center"
+                              className="inline-flex items-center px-3 py-1.5 border border-slate-300 text-xs font-semibold rounded-lg shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                             >
-                              <Clock className="w-5 h-5 mr-1" /> Mark Registered
+                              <Clock className="w-4 h-4 mr-1.5 text-slate-400" /> Reset
                             </button>
                           )}
                         </div>

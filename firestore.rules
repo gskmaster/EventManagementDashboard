@@ -172,15 +172,54 @@ service cloud.firestore {
              data.endDate is string && data.endDate.size() > 0 && data.endDate.size() < 50 &&
              data.venue is string && data.venue.size() > 0 && data.venue.size() < 200 &&
              data.pic is string && data.pic.size() > 0 && data.pic.size() < 200 &&
+             data.pic is string && data.pic.size() > 0 && data.pic.size() < 200 &&
              data.kabupaten is string && data.kabupaten.size() > 0 && data.kabupaten.size() < 200 &&
              (!('status' in data) || data.status in ['Planning', 'On Going', 'Done', 'Cancel']) &&
              data.payments is string && data.payments.size() < 100000 &&
              isValidDateString(data.createdAt);
     }
 
+    function isValidSpeaker(data) {
+      return hasOnlyAllowedFields(['nik', 'fullName', 'email', 'phoneNumber', 'institution', 'expertise', 'ktpUrl', 'projectIds', 'bankName', 'bankAccount', 'bankBranch', 'accountName', 'createdAt', 'updatedAt']) &&
+             data.nik is string && data.nik.size() > 0 &&
+             data.fullName is string && data.fullName.size() > 0 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.phoneNumber is string && data.phoneNumber.size() > 0 &&
+             (!('institution' in data) || data.institution is string) &&
+             data.expertise is list &&
+             (!('ktpUrl' in data) || data.ktpUrl is string) &&
+             data.projectIds is list &&
+             (!('bankName' in data) || data.bankName is string) &&
+             (!('bankAccount' in data) || data.bankAccount is string) &&
+             (!('bankBranch' in data) || data.bankBranch is string) &&
+             (!('accountName' in data) || data.accountName is string) &&
+             isValidDateString(data.createdAt) &&
+             isValidDateString(data.updatedAt);
+    }
+
+    function isValidSubmission(data) {
+      return hasOnlyAllowedFields(['projectId', 'institutionId', 'transferpic', 'amount', 'receiptUrl', 'status', 'createdAt']) &&
+             data.projectId is string && data.projectId.size() > 0 &&
+             data.institutionId is string && data.institutionId.size() > 0 &&
+             data.transferpic is string && data.transferpic.size() > 0 &&
+             (data.amount is string || data.amount is number) &&
+             data.receiptUrl is string && data.receiptUrl.size() > 0 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             isValidDateString(data.createdAt);
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
+
+    match /payment_submissions/{submissionId} {
+      allow read: if isAuthenticated() && (isAdmin() || isFinance());
+      allow create: if isValidSubmission(request.resource.data) && 
+                       request.resource.data.status == 'pending' &&
+                       get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.status == 'On Going';
+      allow update: if isAuthenticated() && (isAdmin() || isFinance()) && isValidSubmission(request.resource.data);
+      allow delete: if isAdmin();
+    }
 
     match /users/{userId} {
       allow read: if isAuthenticated();
@@ -265,6 +304,13 @@ service cloud.firestore {
                        (isAdmin() || isFinance());
                        
       allow delete: if isAdmin() || isFinance();
+    }
+
+    match /Speakers/{speakerId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO());
+      allow create: if isValidSpeaker(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isEventManager()) && isValidSpeaker(request.resource.data);
+      allow delete: if isAdmin();
     }
   }
 }

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm run dev"
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_HMR_HOST=localhost
+    depends_on:
+      - firebase
+
+  firebase:
+    build:
+      context: .
+      dockerfile: Dockerfile.firebase
+    volumes:
+      - ./:/app
+    ports:
+      - "4000:4000"
+      - "8080:8080"
+      - "9099:9099"
+      - "9199:9199"
+    environment:
+      - NODE_ENV=development
+
+volumes:
+  node_modules:

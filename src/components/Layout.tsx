@@ -59,6 +59,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <NavItem to="/projects" icon={ClipboardCheck} label="Projects" />
           )}
 
+          {(profile?.role === 'admin' || profile?.role === 'event_manager') && (
+            <NavItem to="/speakers" icon={Users} label="Speakers" />
+          )}
+
           {(profile?.role === 'admin') && (
             <NavItem to="/registration" icon={Map} label="Region Management" />
           )}
@@ -70,6 +74,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           {(profile?.role === 'admin' || profile?.role === 'event_manager' || profile?.role === 'lo') && (
             <NavItem to="/attendance" icon={Users} label="Attendance" />
           )}
+
 
           {(profile?.role === 'admin') && (
             <NavItem to="/users" icon={UserPlus} label="User Management" />

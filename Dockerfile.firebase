@@ -1,0 +1,21 @@
+# Dockerfile for Firebase Emulators
+FROM node:20-alpine
+
+# Install OpenJDK (required for Firebase emulators)
+RUN apk add --no-cache openjdk25-jre bash
+
+# Install Firebase CLI
+RUN npm install -g firebase-tools
+
+WORKDIR /app
+
+# The emulators will need the firebase.json and firestore.rules
+# But we will mount the entire directory in docker-compose for dev
+# This is just for completeness
+COPY firebase.json firestore.rules ./
+
+# Ports for Emulators
+EXPOSE 4000 8080 9099 9199
+
+# Start emulators with data persistence
+CMD ["firebase", "emulators:start", "--project", "demo-event-management", "--import=firebase-data", "--export-on-exit"]
