@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the Event Management System.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "event_manager", "accounting", "usher", "participant"]
+        },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Institution": {
+      "title": "Institution",
+      "description": "An institution registered for the event.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the participant who registered this" },
+        "desa": { "type": "string" },
+        "kecamatan": { "type": "string" },
+        "kabupaten": { "type": "string" },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["pending", "confirmed", "rejected"]
+        },
+        "paymentProofUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "desa", "kecamatan", "kabupaten", "paymentStatus", "createdAt"]
+    },
+    "Person": {
+      "title": "Person",
+      "description": "A participant belonging to an institution.",
+      "type": "object",
+      "properties": {
+        "institutionId": { "type": "string" },
+        "userId": { "type": "string", "description": "UID of the participant who registered this" },
+        "nik": { "type": "string" },
+        "fullName": { "type": "string" },
+        "mobilePhone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "attendanceStatus": {
+          "type": "string",
+          "enum": ["absent", "present"]
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["institutionId", "userId", "nik", "fullName", "mobilePhone", "email", "attendanceStatus", "createdAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A payment project for a specific Kabupaten.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "venue": { "type": "string" },
+        "pic": { "type": "string" },
+        "kabupaten": { "type": "string" },
+        "status": {
+          "type": "string",
+          "enum": ["Planning", "On Going", "Done", "Cancel"]
+        },
+        "payments": { "type": "string", "description": "JSON stringified map of institutionId to { status: 'yes'|'no', amount: number, adminTransfer: string, receiptUrl: string }" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "startDate", "endDate", "venue", "pic", "kabupaten", "status", "payments", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/institutions/{institutionId}": {
+      "schema": { "$ref": "#/entities/Institution" },
+      "description": "Stores registered institutions."
+    },
+    "/persons/{personId}": {
+      "schema": { "$ref": "#/entities/Person" },
+      "description": "Stores individual participants for the event."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Stores payment projects."
+    }
+  }
+}

@@ -1,0 +1,270 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - email: string (required, immutable)
+    //   - role: string (required) - 'admin', 'event_manager', 'accounting', 'usher', 'participant'
+    //   - displayName: string (optional)
+    //   - createdAt: string (required, immutable)
+    //
+    // Collection: institutions
+    // Document ID: {institutionId}
+    // Fields:
+    //   - userId: string (required, immutable)
+    //   - desa: string (required)
+    //   - kecamatan: string (required)
+    //   - kabupaten: string (required)
+    //   - paymentStatus: string (required) - 'pending', 'confirmed', 'rejected'
+    //   - paymentProofUrl: string (optional)
+    //   - createdAt: string (required, immutable)
+    //
+    // Collection: persons
+    // Document ID: {personId}
+    // Fields:
+    //   - institutionId: string (required, immutable)
+    //   - userId: string (required, immutable)
+    //   - nik: string (required)
+    //   - fullName: string (required)
+    //   - mobilePhone: string (required)
+    //   - email: string (required)
+    //   - attendanceStatus: string (required) - 'absent', 'present'
+    //   - createdAt: string (required, immutable)
+    //
+    // Collection: projects
+    // Document ID: {projectId}
+    // Fields:
+    //   - name: string (required)
+    //   - startDate: string (required)
+    //   - endDate: string (required)
+    //   - venue: string (required)
+    //   - pic: string (required)
+    //   - kabupaten: string (required)
+    //   - status: string (required) - 'Planning', 'On Going', 'Done', 'Cancel'
+    //   - payments: string (required)
+    //   - createdAt: string (required, immutable)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'admin') ||
+        (request.auth.token.email == "daniel.andrew91@gmail.com" && request.auth.token.email_verified == true) ||
+        (request.auth.token.email == "admin@gsk.co.id")
+      );
+    }
+
+    function isEventManager() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'event_manager';
+    }
+
+    function isFinance() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'finance';
+    }
+
+    function isLO() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'lo';
+    }
+
+    function isParticipant() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'participant';
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'phone', 'createdAt']) &&
+             data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
+             data.role in ['admin', 'event_manager', 'finance', 'lo', 'participant'] &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() < 50)) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidInstitution(data) {
+      return hasOnlyAllowedFields(['userId', 'desa', 'kecamatan', 'kabupaten', 'paymentStatus', 'paymentProofUrl', 'createdAt']) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() < 100 &&
+             data.desa is string && data.desa.size() > 0 && data.desa.size() < 200 &&
+             data.kecamatan is string && data.kecamatan.size() > 0 && data.kecamatan.size() < 200 &&
+             data.kabupaten is string && data.kabupaten.size() > 0 && data.kabupaten.size() < 200 &&
+             data.paymentStatus in ['pending', 'confirmed', 'rejected'] &&
+             (!('paymentProofUrl' in data) || (data.paymentProofUrl is string && data.paymentProofUrl.size() < 1000)) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidPerson(data) {
+      return hasOnlyAllowedFields(['institutionId', 'userId', 'projectId', 'nik', 'fullName', 'mobilePhone', 'email', 'kabupaten', 'kecamatan', 'desa', 'posisi', 'posisiLainnya', 'attendanceStatus', 'createdAt']) &&
+             (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() < 100)) &&
+             (!('userId' in data) || (data.userId is string && data.userId.size() < 100)) &&
+             (!('projectId' in data) || (data.projectId is string && data.projectId.size() < 100)) &&
+             data.nik is string && data.nik.size() > 0 && data.nik.size() < 50 &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 200 &&
+             data.mobilePhone is string && data.mobilePhone.size() > 0 && data.mobilePhone.size() < 50 &&
+             (!('email' in data) || data.email == '' || (data.email is string && isValidEmail(data.email) && data.email.size() < 100)) &&
+             (!('kabupaten' in data) || (data.kabupaten is string && data.kabupaten.size() < 200)) &&
+             (!('kecamatan' in data) || (data.kecamatan is string && data.kecamatan.size() < 200)) &&
+             (!('desa' in data) || (data.desa is string && data.desa.size() < 200)) &&
+             (!('posisi' in data) || (data.posisi is string && data.posisi.size() < 200)) &&
+             (!('posisiLainnya' in data) || (data.posisiLainnya is string && data.posisiLainnya.size() < 200)) &&
+             data.attendanceStatus in ['registered', 'absent', 'present'] &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidProject(data) {
+      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'pic', 'kabupaten', 'status', 'payments', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.startDate is string && data.startDate.size() > 0 && data.startDate.size() < 50 &&
+             data.endDate is string && data.endDate.size() > 0 && data.endDate.size() < 50 &&
+             data.venue is string && data.venue.size() > 0 && data.venue.size() < 200 &&
+             data.pic is string && data.pic.size() > 0 && data.pic.size() < 200 &&
+             data.kabupaten is string && data.kabupaten.size() > 0 && data.kabupaten.size() < 200 &&
+             (!('status' in data) || data.status in ['Planning', 'On Going', 'Done', 'Cancel']) &&
+             data.payments is string && data.payments.size() < 100000 &&
+             isValidDateString(data.createdAt);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                       isValidUser(request.resource.data) && 
+                       (
+                         (isOwner(userId) && uidUnchanged() && request.resource.data.role == 'participant') || 
+                         isAdmin()
+                       );
+                       
+      allow update: if isAuthenticated() && 
+                       isValidUser(request.resource.data) && 
+                       request.resource.data.email == resource.data.email &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       (
+                         (isOwner(userId) && uidNotModified() && request.resource.data.role == resource.data.role) || 
+                         isAdmin()
+                       );
+                       
+      allow delete: if isAdmin();
+    }
+
+    match /institutions/{institutionId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || resource.data.userId == request.auth.uid);
+      
+      allow create: if isAuthenticated() && 
+                       isValidInstitution(request.resource.data) && 
+                       request.resource.data.userId == request.auth.uid &&
+                       (request.resource.data.paymentStatus == 'pending' || isAdmin());
+                       
+      allow update: if isAuthenticated() && 
+                       isValidInstitution(request.resource.data) && 
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       (
+                         isAdmin() ||
+                         (isEventManager() && request.resource.data.paymentStatus == resource.data.paymentStatus) ||
+                         (isFinance() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['paymentStatus'])) ||
+                         (resource.data.userId == request.auth.uid && request.resource.data.paymentStatus == resource.data.paymentStatus)
+                       );
+                       
+      allow delete: if isAdmin() || (resource.data.userId == request.auth.uid && resource.data.paymentStatus == 'pending');
+    }
+
+    match /persons/{personId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || resource.data.userId == request.auth.uid);
+      
+      allow create: if isValidPerson(request.resource.data) && 
+                       (
+                         (isAuthenticated() && 'userId' in request.resource.data && request.resource.data.userId == request.auth.uid && request.resource.data.attendanceStatus == 'absent') ||
+                         (request.resource.data.attendanceStatus == 'registered' && 'projectId' in request.resource.data && get(/databases/$(database)/documents/projects/$(request.resource.data.projectId)).data.status == 'On Going')
+                       );
+                       
+      allow update: if isAuthenticated() && 
+                       isValidPerson(request.resource.data) && 
+                       (!('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId) &&
+                       (!('institutionId' in request.resource.data) || request.resource.data.institutionId == resource.data.institutionId) &&
+                       (!('projectId' in request.resource.data) || request.resource.data.projectId == resource.data.projectId) &&
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       (
+                         isAdmin() ||
+                         isEventManager() ||
+                         (isLO() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus'])) ||
+                         (resource.data.userId == request.auth.uid && request.resource.data.attendanceStatus == resource.data.attendanceStatus)
+                       );
+                       
+      allow delete: if isAdmin() || resource.data.userId == request.auth.uid;
+    }
+
+    match /projects/{projectId} {
+      allow get: if true;
+      allow list: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO());
+      
+      allow create: if isAuthenticated() && 
+                       isValidProject(request.resource.data) && 
+                       (isAdmin() || isFinance());
+                       
+      allow update: if isAuthenticated() && 
+                       isValidProject(request.resource.data) && 
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       (isAdmin() || isFinance());
+                       
+      allow delete: if isAdmin() || isFinance();
+    }
+  }
+}

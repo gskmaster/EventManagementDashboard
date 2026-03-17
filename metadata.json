@@ -1,0 +1,5 @@
+{
+  "name": "Event Management Dashboard",
+  "description": "A Learning Management System dashboard with Firebase email/password authentication.",
+  "requestFramePermissions": []
+}
