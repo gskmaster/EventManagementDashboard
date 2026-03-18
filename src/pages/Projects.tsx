@@ -4,12 +4,14 @@ import { db } from '../firebase';
 import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
-import { Plus, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Search, Edit2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Eye } from 'lucide-react';
 import { locations } from '../data/locations';
 import Select from 'react-select';
+import { useNavigate } from 'react-router-dom';
 
 export default function Projects() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
@@ -294,6 +296,9 @@ export default function Projects() {
                   >
                     Status <SortIcon column="status" />
                   </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -347,6 +352,15 @@ export default function Projects() {
                           </span>
                         </div>
                       )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => navigate(`/projects/${proj.id}`)}
+                        className="text-slate-400 hover:text-indigo-600 transition-colors"
+                        title="View Project Details"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
                     </td>
                   </tr>
                 ))}

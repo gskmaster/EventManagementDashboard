@@ -10,6 +10,7 @@ import Attendance from './pages/Attendance';
 import Projects from './pages/Projects';
 import Users from './pages/Users';
 import Speakers from './pages/Speakers';
+import ProjectDetail from './pages/ProjectDetail';
 import PublicRegistration from './pages/PublicRegistration';
 import PublicSpeakerRegistration from './pages/PublicSpeakerRegistration';
 import PublicPaymentRegistration from './pages/PublicPaymentRegistration';
@@ -59,6 +60,14 @@ export default function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
                   <Projects />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/projects/:projectId" 
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                  <ProjectDetail />
                 </ProtectedRoute>
               } 
             />
