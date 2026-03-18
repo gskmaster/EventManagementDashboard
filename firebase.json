@@ -1,8 +1,10 @@
 {
   "firestore": {
+    "database": "ai-studio-e2e5d0b4-496d-416f-8fe2-52f9d835e885",
     "rules": "firestore.rules"
   },
   "storage": {
+    "bucket": "gen-lang-client-0764930804.firebasestorage.app",
     "rules": "storage.rules"
   },
   "hosting": {
