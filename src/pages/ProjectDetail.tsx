@@ -19,13 +19,9 @@ import {
   CreditCard, 
   Mic, 
   Search, 
-  ArrowUpDown, 
-  ChevronLeft, 
-  ChevronRight,
   ExternalLink,
   CheckCircle2,
-  XCircle,
-  Clock
+  XCircle
 } from 'lucide-react';
 
 interface Project {
@@ -39,16 +35,7 @@ interface Project {
   status: string;
 }
 
-/** Only allow https:// URLs (Firebase Storage) - prevents javascript: / data: XSS */
-const sanitizeUrl = (url: string | undefined): string | null => {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'https:' ? url : null;
-  } catch {
-    return null;
-  }
-};
+
 
 export default function ProjectDetail() {
   const { projectId } = useParams();
@@ -58,9 +45,6 @@ export default function ProjectDetail() {
   const [registrations, setRegistrations] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [speakers, setSpeakers] = useState<any[]>([]);
-  
-  // Store validated receipt URLs outside of tainted useState to prevent Snyk open-redirect dataflow
-  const receiptUrls = React.useRef<Map<string, string>>(new Map());
 
   // Modal State
   const [activeModal, setActiveModal] = useState<'registered' | 'payments' | 'speakers' | null>(null);
@@ -95,19 +79,15 @@ export default function ProjectDetail() {
       ]);
 
       setRegistrations(regSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      
-      // Build a trusted URL registry outside of state (breaks Snyk open-redirect taint chain)
-      receiptUrls.current = new Map();
       setPayments(paySnap.docs.map(d => {
         const data = d.data() as any;
+        let hasReceipt = false;
         try {
           const parsed = new URL(data.receiptUrl || '');
-          if (parsed.protocol === 'https:' && parsed.hostname === 'firebasestorage.googleapis.com') {
-            receiptUrls.current.set(d.id, parsed.toString());
-          }
+          hasReceipt = parsed.protocol === 'https:' && parsed.hostname === 'firebasestorage.googleapis.com';
         } catch { /* non-URL values are ignored */ }
-        const { receiptUrl: _dropped, ...safeData } = data; // drop raw URL from state
-        return { id: d.id, hasReceipt: receiptUrls.current.has(d.id), ...safeData };
+        const { receiptUrl: _dropped, ...safeData } = data;
+        return { id: d.id, hasReceipt, ...safeData };
       }));
       setSpeakers(spkSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
