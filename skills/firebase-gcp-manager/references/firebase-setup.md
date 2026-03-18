@@ -54,3 +54,58 @@ export const storage = getStorage(app);
 ```
 
 Ensure environment variables are prefixed correctly depending on the framework (e.g., `NEXT_PUBLIC_` for Next.js, `VITE_` for Vite).
+
+## Local Emulator Setup & Environment Isolation
+
+To ensure a robust and isolated development environment, follow these best practices for Firebase Emulators.
+
+### 1. Project ID Isolation
+Always use a `demo-` prefix for local development (e.g., `demo-local-project`).
+- **Strictly Local**: Prevents the emulator from communicating with real Google Cloud project resources.
+- **Predictable Mapping**: Ensures that data exported using a specific ID is correctly re-imported when using the same ID.
+
+### 2. Configuration Consistency
+Ensure the chosen `projectId` is consistent across all configurations:
+- **`.firebaserc`**: Add it as a local alias.
+  ```json
+  "projects": {
+    "production": "your-prod-id",
+    "default": "demo-local-project"
+  }
+  ```
+- **Application Code**: Explicitly override the `projectId` in development.
+  ```javascript
+  if (import.meta.env.DEV) {
+    config.projectId = 'demo-local-project';
+  }
+  ```
+
+### 3. Emulator Persistence
+Configure your start scripts to automate data loading and saving:
+- **`package.json`**:
+  ```json
+  "serve": "firebase emulators:start --project demo-local-project --import=./emulator-data --export-on-exit"
+  ```
+- **Manual Export**: To save data without stopping:
+  ```bash
+  firebase emulators:export ./emulator-data --project demo-local-project
+  ```
+
+### 4. Docker & Graceful Shutdown
+When running emulators in Docker, ensure they have enough time to save data before the container is killed.
+- **`docker-compose.yml`**:
+  ```yaml
+  services:
+    firebase:
+      # ... other config
+      stop_grace_period: 120s # Essential for --export-on-exit
+  ```
+
+### 5. Multi-Database Handling
+If your production uses a custom Firestore database name, strip it in development to point to the emulator's `(default)` database for a smoother UI experience.
+```javascript
+if (import.meta.env.DEV) {
+  // Use (default) for emulators
+  delete config.firestoreDatabaseId;
+}
+```

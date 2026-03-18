@@ -17,5 +17,5 @@ COPY firebase.json firestore.rules ./
 # Ports for Emulators
 EXPOSE 4000 8080 9099 9199
 
-# Start emulators with data persistence
-CMD ["firebase", "emulators:start", "--project", "demo-event-management", "--import=firebase-data", "--export-on-exit"]
+# Start emulators using the serve script
+CMD ["npm", "run", "serve"]

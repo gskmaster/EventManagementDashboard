@@ -2,18 +2,25 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
-import firebaseConfig from '../firebase-applet-config.json';
+import { getAnalytics } from "firebase/analytics";
+export const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID,
+};
 
-export { firebaseConfig };
-
-const config = { ...firebaseConfig };
 if (import.meta.env.DEV) {
   // Use a predictable project ID for local emulation
-  config.projectId = 'demo-event-management';
+  firebaseConfig.projectId = 'demo-event-management';
   // Strip the production custom database ID so the emulator accurately uses the (default) database
-  delete (config as any).firestoreDatabaseId;
+  delete (firebaseConfig as any).firestoreDatabaseId;
 }
-const app = initializeApp(config);
+const app = initializeApp(firebaseConfig);
 
 // Use default database for local emulation so data shows up in the UI
 export const db = import.meta.env.DEV 
@@ -22,6 +29,13 @@ export const db = import.meta.env.DEV
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+
+// Initialize Analytics conditionally (it requires measurementId and a browser context)
+// We also disable it in DEV mode because Firebase Analytics does not have a local emulator
+// and will fail with 403 trying to reach the real API using the 'demo-' project ID.
+export const analytics = typeof window !== "undefined" && import.meta.env.VITE_FIREBASE_MEASUREMENT_ID && !import.meta.env.DEV
+  ? getAnalytics(app) 
+  : null;
 
 // Connect to local emulators if in development mode
 if (import.meta.env.DEV) {

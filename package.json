@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "emulator:save": "docker exec eventmanagementdashboard-firebase-1 firebase emulators:export emulator-data --project demo-event-management",
+    "serve": "firebase emulators:start --project demo-event-management --import=./emulator-data --export-on-exit"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

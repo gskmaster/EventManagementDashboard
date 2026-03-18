@@ -4,7 +4,8 @@ dist/
 coverage/
 .DS_Store
 *.log
+secrets/
 .env*
 !.env.example
 firebase-data/
-serviceAccountKey.json
+emulator-data/
