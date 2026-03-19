@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, getDocs, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, getDocs, doc, updateDoc, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
@@ -22,11 +22,13 @@ export default function Projects() {
     name: '',
     startDate: '',
     endDate: '',
-    venue: '',
     pic: '',
     kabupaten: '',
     status: 'Planning'
   });
+  const [newProjectVenueIds, setNewProjectVenueIds] = useState<string[]>([]);
+
+  const [venueOptions, setVenueOptions] = useState<{ value: string; label: string; kabupaten: string }[]>([]);
 
   // Table State
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,9 +42,23 @@ export default function Projects() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<string>('');
 
+  // Edit Project Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editProject, setEditProject] = useState<any>(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+
   // Inline Edit State
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
   const [inlineEditStatus, setInlineEditStatus] = useState<string>('');
+
+  // Usher / LO assignment state
+  const [allUshers, setAllUshers] = useState<{ id: string; fullName: string; projectIds: string[] }[]>([]);
+  const [allLOs, setAllLOs] = useState<{ id: string; fullName: string; projectIds: string[] }[]>([]);
+  const [newProjectUsherIds, setNewProjectUsherIds] = useState<string[]>([]);
+  const [newProjectLOIds, setNewProjectLOIds] = useState<string[]>([]);
+  const [editProjectUsherIds, setEditProjectUsherIds] = useState<string[]>([]);
+  const [editProjectLOIds, setEditProjectLOIds] = useState<string[]>([]);
+  const [editProjectVenueIds, setEditProjectVenueIds] = useState<string[]>([]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -50,7 +66,42 @@ export default function Projects() {
 
   useEffect(() => {
     fetchProjects();
+    fetchVenueOptions();
+    fetchUsherAndLOOptions();
   }, [user, profile]);
+
+  const fetchUsherAndLOOptions = async () => {
+    try {
+      const [usherSnap, loSnap] = await Promise.all([
+        getDocs(collection(db, 'ushers')),
+        getDocs(collection(db, 'liaison_officers')),
+      ]);
+      setAllUshers(usherSnap.docs.map(d => ({
+        id: d.id,
+        fullName: (d.data() as any).fullName || '',
+        projectIds: (d.data() as any).projectIds || [],
+      })));
+      setAllLOs(loSnap.docs.map(d => ({
+        id: d.id,
+        fullName: (d.data() as any).fullName || '',
+        projectIds: (d.data() as any).projectIds || [],
+      })));
+    } catch (e) {
+      console.error('Error fetching ushers/LOs:', e);
+    }
+  };
+
+  const fetchVenueOptions = async () => {
+    try {
+      const snapshot = await getDocs(collection(db, 'venues'));
+      setVenueOptions(snapshot.docs.map(d => {
+        const v = d.data() as any;
+        return { value: d.id, label: v.name, kabupaten: v.kabupaten || '' };
+      }));
+    } catch (e) {
+      console.error('Error fetching venues:', e);
+    }
+  };
 
   const fetchProjects = async () => {
     if (!user || !profile) return;
@@ -69,23 +120,84 @@ export default function Projects() {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newProject.name || !newProject.startDate || !newProject.endDate || !newProject.venue || !newProject.pic || !newProject.kabupaten) {
+    if (!newProject.name || !newProject.startDate || !newProject.endDate || !newProject.pic || !newProject.kabupaten) {
       showToast("Please fill all fields.", "error");
       return;
     }
     try {
-      await addDoc(collection(db, 'projects'), {
+      const selectedVenues = venueOptions.filter(v => newProjectVenueIds.includes(v.value));
+      const newRef = await addDoc(collection(db, 'projects'), {
         ...newProject,
+        venueIds: newProjectVenueIds,
+        venues: selectedVenues.map(v => v.label),
+        venue: selectedVenues.map(v => v.label).join(', '),
         payments: "{}",
         createdAt: new Date().toISOString()
       });
+      await Promise.all([
+        ...newProjectUsherIds.map(id => updateDoc(doc(db, 'ushers', id), { projectIds: arrayUnion(newRef.id) })),
+        ...newProjectLOIds.map(id => updateDoc(doc(db, 'liaison_officers', id), { projectIds: arrayUnion(newRef.id) })),
+      ]);
       showToast("Project created successfully!", "success");
       setShowProjectModal(false);
-      setNewProject({ name: '', startDate: '', endDate: '', venue: '', pic: '', kabupaten: '', status: 'Planning' });
+      setNewProject({ name: '', startDate: '', endDate: '', pic: '', kabupaten: '', status: 'Planning' });
+      setNewProjectVenueIds([]);
+      setNewProjectUsherIds([]);
+      setNewProjectLOIds([]);
       fetchProjects();
+      fetchUsherAndLOOptions();
     } catch (error) {
       console.error("Error creating project:", error);
       showToast("Failed to create project.", "error");
+    }
+  };
+
+  const handleEditProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editProject.name || !editProject.startDate || !editProject.endDate || !editProject.pic || !editProject.kabupaten) {
+      showToast("Please fill all required fields.", "error");
+      return;
+    }
+    setIsEditSaving(true);
+    try {
+      const projRef = doc(db, 'projects', editProject.id);
+      const { id, ...data } = editProject;
+      const selectedVenues = venueOptions.filter(v => editProjectVenueIds.includes(v.value));
+      await updateDoc(projRef, {
+        ...data,
+        venueIds: editProjectVenueIds,
+        venues: selectedVenues.map(v => v.label),
+        venue: selectedVenues.map(v => v.label).join(', '),
+      });
+
+      // Sync usher assignments
+      await Promise.all(allUshers.map(usher => {
+        const wasAssigned = usher.projectIds.includes(editProject.id);
+        const isAssigned = editProjectUsherIds.includes(usher.id);
+        if (!wasAssigned && isAssigned) return updateDoc(doc(db, 'ushers', usher.id), { projectIds: arrayUnion(editProject.id) });
+        if (wasAssigned && !isAssigned) return updateDoc(doc(db, 'ushers', usher.id), { projectIds: arrayRemove(editProject.id) });
+        return Promise.resolve();
+      }));
+
+      // Sync LO assignments
+      await Promise.all(allLOs.map(lo => {
+        const wasAssigned = lo.projectIds.includes(editProject.id);
+        const isAssigned = editProjectLOIds.includes(lo.id);
+        if (!wasAssigned && isAssigned) return updateDoc(doc(db, 'liaison_officers', lo.id), { projectIds: arrayUnion(editProject.id) });
+        if (wasAssigned && !isAssigned) return updateDoc(doc(db, 'liaison_officers', lo.id), { projectIds: arrayRemove(editProject.id) });
+        return Promise.resolve();
+      }));
+
+      showToast("Project updated successfully!", "success");
+      setShowEditModal(false);
+      setEditProject(null);
+      fetchProjects();
+      fetchUsherAndLOOptions();
+    } catch (error) {
+      console.error("Error updating project:", error);
+      showToast("Failed to update project.", "error");
+    } finally {
+      setIsEditSaving(false);
     }
   };
 
@@ -354,13 +466,28 @@ export default function Projects() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => navigate(`/projects/${proj.id}`)}
-                        className="text-slate-400 hover:text-indigo-600 transition-colors"
-                        title="View Project Details"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setEditProject({ ...proj });
+                            setEditProjectVenueIds(proj.venueIds || (proj.venueId ? [proj.venueId] : []));
+                            setEditProjectUsherIds(allUshers.filter(u => u.projectIds.includes(proj.id)).map(u => u.id));
+                            setEditProjectLOIds(allLOs.filter(lo => lo.projectIds.includes(proj.id)).map(lo => lo.id));
+                            setShowEditModal(true);
+                          }}
+                          className="text-slate-400 hover:text-amber-600 transition-colors"
+                          title="Edit Project"
+                        >
+                          <Edit2 className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => navigate(`/projects/${proj.id}`)}
+                          className="text-slate-400 hover:text-indigo-600 transition-colors"
+                          title="View Project Details"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -442,12 +569,15 @@ export default function Projects() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Event Venue</label>
-                    <input
-                      type="text"
-                      required
-                      value={newProject.venue}
-                      onChange={(e) => setNewProject({...newProject, venue: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    <Select
+                      options={venueOptions}
+                      value={venueOptions.filter(o => newProjectVenueIds.includes(o.value))}
+                      onChange={(sel) => setNewProjectVenueIds((sel as any[]).map(s => s.value))}
+                      placeholder="Select venue(s)..."
+                      isMulti
+                      menuPosition="fixed"
+                      className="react-select-container"
+                      classNamePrefix="react-select"
                     />
                   </div>
                   <div>
@@ -488,10 +618,55 @@ export default function Projects() {
                       ))}
                     </select>
                   </div>
+
+                  {/* Usher Assignment */}
+                  {allUshers.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Ushers</label>
+                      <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                        {allUshers.map(u => (
+                          <label key={u.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 mr-2"
+                              checked={newProjectUsherIds.includes(u.id)}
+                              onChange={() => setNewProjectUsherIds(prev =>
+                                prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id]
+                              )}
+                            />
+                            <span className="text-sm text-slate-700">{u.fullName}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LO Assignment */}
+                  {allLOs.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Liaison Officers</label>
+                      <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                        {allLOs.map(lo => (
+                          <label key={lo.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 mr-2"
+                              checked={newProjectLOIds.includes(lo.id)}
+                              onChange={() => setNewProjectLOIds(prev =>
+                                prev.includes(lo.id) ? prev.filter(id => id !== lo.id) : [...prev, lo.id]
+                              )}
+                            />
+                            <span className="text-sm text-slate-700">{lo.fullName}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-6 flex justify-end space-x-3">
                     <button
                       type="button"
-                      onClick={() => setShowProjectModal(false)}
+                      onClick={() => { setShowProjectModal(false); setNewProjectUsherIds([]); setNewProjectLOIds([]); }}
                       className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                     >
                       Cancel
@@ -501,6 +676,162 @@ export default function Projects() {
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
                     >
                       Create Project
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Project Modal */}
+        {showEditModal && editProject && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+              <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => setShowEditModal(false)}></div>
+              <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Edit Project</h3>
+                <form onSubmit={handleEditProject} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Project Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      value={editProject.name}
+                      onChange={(e) => setEditProject({...editProject, name: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Start Date <span className="text-red-500">*</span></label>
+                      <input
+                        type="date"
+                        required
+                        value={editProject.startDate}
+                        onChange={(e) => setEditProject({...editProject, startDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">End Date <span className="text-red-500">*</span></label>
+                      <input
+                        type="date"
+                        required
+                        value={editProject.endDate}
+                        onChange={(e) => setEditProject({...editProject, endDate: e.target.value})}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Event Venue</label>
+                    <Select
+                      options={venueOptions}
+                      value={venueOptions.filter(o => editProjectVenueIds.includes(o.value))}
+                      onChange={(sel) => setEditProjectVenueIds((sel as any[]).map(s => s.value))}
+                      placeholder="Select venue(s)..."
+                      isMulti
+                      menuPosition="fixed"
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Project PIC (Name) <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      value={editProject.pic}
+                      onChange={(e) => setEditProject({...editProject, pic: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Kabupaten <span className="text-red-500">*</span></label>
+                    <Select
+                      options={locations.map(loc => ({ value: loc.kabupaten, label: loc.kabupaten }))}
+                      value={editProject.kabupaten ? { value: editProject.kabupaten, label: editProject.kabupaten } : null}
+                      onChange={(selected) => setEditProject({...editProject, kabupaten: selected?.value || ''})}
+                      placeholder="Select Kabupaten"
+                      isClearable
+                      menuPlacement="auto"
+                      menuPosition="fixed"
+                      className="react-select-container"
+                      classNamePrefix="react-select"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select
+                      value={editProject.status}
+                      onChange={(e) => setEditProject({...editProject, status: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      {statusOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Usher Assignment */}
+                  {allUshers.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Ushers</label>
+                      <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                        {allUshers.map(u => (
+                          <label key={u.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 mr-2"
+                              checked={editProjectUsherIds.includes(u.id)}
+                              onChange={() => setEditProjectUsherIds(prev =>
+                                prev.includes(u.id) ? prev.filter(id => id !== u.id) : [...prev, u.id]
+                              )}
+                            />
+                            <span className="text-sm text-slate-700">{u.fullName}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* LO Assignment */}
+                  {allLOs.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Liaison Officers</label>
+                      <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                        {allLOs.map(lo => (
+                          <label key={lo.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 mr-2"
+                              checked={editProjectLOIds.includes(lo.id)}
+                              onChange={() => setEditProjectLOIds(prev =>
+                                prev.includes(lo.id) ? prev.filter(id => id !== lo.id) : [...prev, lo.id]
+                              )}
+                            />
+                            <span className="text-sm text-slate-700">{lo.fullName}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(false)}
+                      className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isEditSaving}
+                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {isEditSaving ? 'Saving...' : 'Save Changes'}
                     </button>
                   </div>
                 </form>

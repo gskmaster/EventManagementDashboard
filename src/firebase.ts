@@ -17,14 +17,12 @@ export const firebaseConfig = {
 if (import.meta.env.DEV) {
   // Use a predictable project ID for local emulation
   firebaseConfig.projectId = 'demo-event-management';
-  // Strip the production custom database ID so the emulator accurately uses the (default) database
-  delete (firebaseConfig as any).firestoreDatabaseId;
 }
 const app = initializeApp(firebaseConfig);
 
-// Use default database for local emulation so data shows up in the UI
-export const db = import.meta.env.DEV 
-  ? getFirestore(app) 
+// In DEV the emulator uses the (default) database; prod uses the named database
+export const db = import.meta.env.DEV
+  ? getFirestore(app)
   : getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 export const auth = getAuth(app);

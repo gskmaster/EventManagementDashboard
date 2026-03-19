@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, getDocs, doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { initializeApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { db, firebaseConfig } from '../firebase';
+import { getAuth, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { db, auth, firebaseConfig } from '../firebase';
 import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import ConfirmModal from '../components/ConfirmModal';
 import Select from 'react-select';
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, KeyRound, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+
+const DEFAULT_PASSWORD = 'Password1234!';
 
 export default function Users() {
   const { user, profile } = useAuth();
@@ -186,6 +188,31 @@ export default function Users() {
     }
   };
 
+  const handleResetPassword = async (target: any) => {
+    try {
+      if (import.meta.env.DEV) {
+        // Auth emulator: update password directly via REST (no admin token required)
+        const res = await fetch(
+          `http://localhost:9099/identitytoolkit.googleapis.com/v1/accounts:update?key=test-key`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ localId: target.id, password: DEFAULT_PASSWORD }),
+          }
+        );
+        if (!res.ok) throw new Error('Emulator reset failed');
+        showToast(`Password reset to default for ${target.displayName}.`, 'success');
+      } else {
+        // Production: send a reset email (Admin SDK needed to set specific password)
+        await sendPasswordResetEmail(auth, target.email);
+        showToast(`Password reset email sent to ${target.email}.`, 'success');
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      showToast('Failed to reset password.', 'error');
+    }
+  };
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -234,7 +261,9 @@ export default function Users() {
     { value: 'admin', label: 'Admin' },
     { value: 'finance', label: 'Finance' },
     { value: 'event_manager', label: 'Event Manager' },
-    { value: 'lo', label: 'LO' }
+    { value: 'lo', label: 'LO' },
+    { value: 'tax_admin', label: 'Tax Admin' },
+    { value: 'dpo', label: 'Data Protection Officer' },
   ];
 
   const getRoleLabel = (role: string) => {
@@ -338,6 +367,7 @@ export default function Users() {
                         u.role === 'finance' ? 'bg-green-100 text-green-800' :
                         u.role === 'event_manager' ? 'bg-blue-100 text-blue-800' :
                         u.role === 'lo' ? 'bg-amber-100 text-amber-800' :
+                        u.role === 'tax_admin' ? 'bg-rose-100 text-rose-800' :
                         'bg-slate-100 text-slate-800'
                       }`}>
                         {getRoleLabel(u.role)}
@@ -351,6 +381,18 @@ export default function Users() {
                           title="Edit User"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Reset password for "${u.displayName}" to the default password "${DEFAULT_PASSWORD}"?\n\nThe user will need to change it after logging in.`)) {
+                              await handleResetPassword(u);
+                            }
+                          }}
+                          className="text-amber-600 hover:text-amber-900 bg-amber-50 p-1.5 rounded-md transition-colors"
+                          title="Reset Password to Default"
+                          disabled={u.id === user?.uid}
+                        >
+                          <KeyRound className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteClick(u.id)}
@@ -516,6 +558,7 @@ export default function Users() {
             setDeletingId(null);
           }}
         />
+
       </div>
     </Layout>
   );

@@ -6,7 +6,7 @@ import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
-import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Link as LinkIcon, Copy, ExternalLink, Bell } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell } from 'lucide-react';
 import { locations } from '../data/locations';
 
 export default function Payments() {
@@ -42,7 +42,7 @@ export default function Payments() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingInst, setEditingInst] = useState<any | null>(null);
   const [editAmount, setEditAmount] = useState('');
-  const [editAdminTransfer, setEditAdminTransfer] = useState('');
+  const [editNotes, setEditNotes] = useState('');
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [editReceiptUrl, setEditReceiptUrl] = useState('');
   const [editTransferPic, setEditTransferPic] = useState('');
@@ -54,7 +54,7 @@ export default function Payments() {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkAmount, setBulkAmount] = useState('');
-  const [bulkStatus, setBulkStatus] = useState<'yes' | 'no' | ''>('');
+  const [bulkStatus, setBulkStatus] = useState<'yes' | 'no' | 'approval' | ''>('');
   
   // Inline Edit State
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
@@ -170,7 +170,7 @@ export default function Payments() {
     const details = getPaymentDetails(inst.id);
     setEditingInst(inst);
     setEditAmount(details.amount || '');
-    setEditAdminTransfer(details.adminTransfer || '');
+    setEditNotes(details.notes || '');
     setEditReceiptUrl(details.receiptUrl || '');
     setEditTransferPic(details.transferpic || '');
     setEditReceiptFile(null);
@@ -278,13 +278,15 @@ export default function Payments() {
       
       const updatedPayments = { 
         ...currentPayments, 
-        [editingInst.id]: { 
-          ...currentData, 
+        [editingInst.id]: {
+          ...currentData,
           amount: editAmount,
-          adminTransfer: editAdminTransfer,
+          transferpic: editTransferPic,
+          notes: editNotes,
           receiptUrl: finalReceiptUrl,
-          transferpic: editTransferPic
-        } 
+          kecamatan: editingInst.kecamatan || currentData.kecamatan || '',
+          desa: editingInst.desa || currentData.desa || '',
+        }
       };
       const paymentsString = JSON.stringify(updatedPayments);
 
@@ -307,6 +309,23 @@ export default function Payments() {
       showToast("Failed to save payment details.", "error");
     } finally {
       setUploadingReceipt(false);
+    }
+  };
+
+  const handleStatusChange = async (instId: string, newStatus: string) => {
+    if (!selectedProject) return;
+    try {
+      const currentPayments = JSON.parse(selectedProject.payments || '{}');
+      const currentData = currentPayments[instId] || {};
+      const updatedPayments = { ...currentPayments, [instId]: { ...currentData, status: newStatus } };
+      const paymentsString = JSON.stringify(updatedPayments);
+      const projRef = doc(db, 'projects', selectedProject.id);
+      await updateDoc(projRef, { payments: paymentsString });
+      setSelectedProject({ ...selectedProject, payments: paymentsString });
+      showToast('Payment status updated.', 'success');
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      showToast('Failed to update payment status.', 'error');
     }
   };
 
@@ -372,13 +391,15 @@ export default function Payments() {
 
   const statusOptions = [
     { value: 'yes', label: 'Paid (Yes)' },
-    { value: 'no', label: 'Unpaid (No)' }
+    { value: 'approval', label: 'Approval' },
+    { value: 'no', label: 'Unpaid (No)' },
   ];
 
-  const totalKecamatan = new Set(sortedAndFilteredInstitutions.map(i => i.kecamatan)).size;
-  const totalDesa = sortedAndFilteredInstitutions.length;
-  const totalPaid = sortedAndFilteredInstitutions.filter(i => getPaymentStatus(i.id) === 'yes').length;
-  const totalUnpaid = totalDesa - totalPaid;
+  const totalKecamatan = new Set(institutions.map(i => i.kecamatan)).size;
+  const totalDesa = institutions.length;
+  const totalPaid = institutions.filter(i => getPaymentStatus(i.id) === 'yes').length;
+  const totalApproval = institutions.filter(i => getPaymentStatus(i.id) === 'approval').length;
+  const totalUnpaid = totalDesa - totalPaid - totalApproval;
 
   return (
     <Layout>
@@ -457,11 +478,29 @@ export default function Payments() {
               </button>
               <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-6">
                 <h2 className="text-2xl font-bold text-slate-900 mb-4">{selectedProject.name}</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-600 mb-4">
                   <div><span className="font-semibold">Venue:</span> {selectedProject.venue}</div>
                   <div><span className="font-semibold">Kabupaten:</span> {selectedProject.kabupaten}</div>
                   <div><span className="font-semibold">Dates:</span> {selectedProject.startDate} to {selectedProject.endDate}</div>
                   <div><span className="font-semibold">PIC:</span> {selectedProject.pic}</div>
+                </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Participant Self-Registration Link</p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 font-mono truncate select-all">
+                      {`${window.location.origin}/pay-receipt/${selectedProject.id}`}
+                    </div>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/pay-receipt/${selectedProject.id}`);
+                        showToast("Registration link copied to clipboard!", "success");
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                    >
+                      <Copy className="w-4 h-4" />
+                      Copy Link
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -490,12 +529,15 @@ export default function Payments() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Progress Payment</p>
-                    <div className="flex items-baseline space-x-2">
+                    <div className="flex items-baseline space-x-2 flex-wrap gap-y-1">
                       <h3 className="text-2xl font-bold text-green-600">{totalPaid}</h3>
-                      <span className="text-sm text-slate-500">paid</span>
+                      <span className="text-xs text-slate-500">paid</span>
+                      <span className="text-slate-300">/</span>
+                      <h3 className="text-2xl font-bold text-amber-500">{totalApproval}</h3>
+                      <span className="text-xs text-slate-500">approval</span>
                       <span className="text-slate-300">/</span>
                       <h3 className="text-2xl font-bold text-red-500">{totalUnpaid}</h3>
-                      <span className="text-sm text-slate-500">unpaid</span>
+                      <span className="text-xs text-slate-500">unpaid</span>
                     </div>
                   </div>
                 </div>
@@ -651,47 +693,32 @@ export default function Payments() {
                             </div>
                           )}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <select
+                            value={status}
+                            onChange={(e) => handleStatusChange(inst.id, e.target.value)}
+                            className={`text-xs font-semibold rounded-full px-2 py-1 border-0 cursor-pointer focus:ring-2 focus:ring-indigo-500 focus:outline-none ${
+                              status === 'yes' ? 'bg-green-100 text-green-800' :
+                              status === 'approval' ? 'bg-amber-100 text-amber-800' :
+                              'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            <option value="yes">Yes</option>
+                            <option value="approval">Approval</option>
+                            <option value="no">No</option>
+                          </select>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                           {details.transferpic || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            status === 'yes' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {status === 'yes' ? 'Yes' : 'No'}
-                          </span>
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                          <div className="flex items-center justify-center space-x-4">
-                            <button
-                              onClick={() => togglePaymentStatus(inst.id)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                                status === 'yes' ? 'bg-green-500' : 'bg-slate-300'
-                              }`}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  status === 'yes' ? 'translate-x-6' : 'translate-x-1'
-                                }`}
-                              />
-                            </button>
+                          <div className="flex items-center justify-center space-x-2">
                             <button
                               onClick={() => handleEditClick(inst)}
                               className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 rounded-md transition-colors"
                               title="Edit Payment Details"
                             >
                               <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                const url = `${window.location.origin}/pay-receipt/${selectedProject.id}/${inst.id}`;
-                                navigator.clipboard.writeText(url);
-                                showToast("Registration link copied to clipboard!", "success");
-                              }}
-                              className="text-emerald-600 hover:text-emerald-900 bg-emerald-50 p-1.5 rounded-md transition-colors"
-                              title="Copy Self-Registration Link"
-                            >
-                              <LinkIcon className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
@@ -861,6 +888,7 @@ export default function Payments() {
                     >
                       <option value="">No Change</option>
                       <option value="yes">Paid (Yes)</option>
+                      <option value="approval">Approval</option>
                       <option value="no">Unpaid (No)</option>
                     </select>
                   </div>
@@ -953,22 +981,22 @@ export default function Payments() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Admin Transfer</label>
-                    <input
-                      type="text"
-                      value={editAdminTransfer}
-                      onChange={(e) => setEditAdminTransfer(e.target.value)}
-                      placeholder="Enter admin transfer details"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                  </div>
-                  <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Transfer PIC</label>
                     <input
                       type="text"
                       value={editTransferPic}
                       onChange={(e) => setEditTransferPic(e.target.value)}
                       placeholder="Name of person who transferred"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <input
+                      type="text"
+                      value={editNotes}
+                      onChange={(e) => setEditNotes(e.target.value)}
+                      placeholder="Enter notes"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>

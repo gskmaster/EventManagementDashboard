@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+/* Google PlaceAutocompleteElement styling */
+gmp-place-autocomplete {
+  width: 100%;
+  height: 42px;
+  --gmpx-font-family-base: inherit;
+  --gmpx-font-size-base: 0.875rem;
+  --gmpx-color-surface: #ffffff;
+  --gmpx-color-on-surface: #0f172a;
+  --gmpx-color-primary: #4f46e5;
+}

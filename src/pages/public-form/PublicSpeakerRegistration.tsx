@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db, storage } from '../../firebase';
 import { Calendar, MapPin, User, CheckCircle2, FileText, X, Award, Loader2 } from 'lucide-react';
+import ConsentCheckbox from '../../components/ConsentCheckbox';
+import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
+import { logConsent } from '../../lib/consentLogger';
 
 export default function PublicSpeakerRegistration() {
   const { projectId } = useParams();
@@ -12,6 +15,9 @@ export default function PublicSpeakerRegistration() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  const [consentGiven, setConsentGiven] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     nik: '',
@@ -104,6 +110,12 @@ export default function PublicSpeakerRegistration() {
       };
 
       await addDoc(collection(db, 'Speakers'), speakerData);
+      await logConsent({
+        formType: 'speaker_registration',
+        userName: formData.fullName,
+        userEmail: formData.email,
+        projectId,
+      });
       setSuccess(true);
     } catch (err) {
       console.error("Error submitting registration:", err);
@@ -156,17 +168,20 @@ export default function PublicSpeakerRegistration() {
       <div className="max-w-xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200">
           <div className="bg-indigo-600 p-6 text-white rounded-t-2xl">
-            <h1 className="text-2xl font-bold mb-2">Pendaftaran Narasumber</h1>
-            <h2 className="text-lg opacity-90">{project?.name}</h2>
-            
-            <div className="mt-4 space-y-2 text-sm opacity-80">
-              <div className="flex items-center">
-                <Calendar className="w-4 h-4 mr-2" />
-                {project?.startDate} sampai {project?.endDate}
-              </div>
-              <div className="flex items-center">
-                <MapPin className="w-4 h-4 mr-2" />
-                {project?.venue}, {project?.kabupaten}
+            <div className="flex flex-col items-center text-center">
+              <img src="/logo-white.png" alt="Company Logo" className="h-16 w-auto mb-4" />
+              <h1 className="text-2xl font-bold mb-2">Pendaftaran Narasumber</h1>
+              <h2 className="text-lg opacity-90">{project?.name}</h2>
+              
+              <div className="mt-4 space-y-2 text-sm opacity-80">
+                <div className="flex items-center">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {project?.startDate} sampai {project?.endDate}
+                </div>
+                <div className="flex items-center">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  {project?.venue}, {project?.kabupaten}
+                </div>
               </div>
             </div>
           </div>
@@ -354,6 +369,7 @@ export default function PublicSpeakerRegistration() {
                           type="file"
                           className="sr-only"
                           accept="image/*,application/pdf"
+                          capture="environment"
                           onChange={(e) => setKtpFile(e.target.files?.[0] || null)}
                         />
                       </label>
@@ -363,10 +379,13 @@ export default function PublicSpeakerRegistration() {
                 </div>
               </div>
 
+              <ConsentCheckbox checked={consentGiven} onChange={setConsentGiven} />
+              <RecaptchaWidget onChange={setRecaptchaToken} />
+
               <div className="pt-4">
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || !consentGiven || (RECAPTCHA_ENABLED && !recaptchaToken)}
                   className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
                 >
                   {submitting ? (

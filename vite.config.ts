@@ -15,6 +15,9 @@ export default defineConfig(({mode}) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    optimizeDeps: {
+      include: ['xlsx', 'jspdf', 'jspdf-autotable'],
+    },
     server: {
       host: true,
       port: 3000,

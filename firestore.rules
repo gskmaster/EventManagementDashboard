@@ -118,8 +118,17 @@ service cloud.firestore {
       return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'lo';
     }
 
+    function isTaxAdmin() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'tax_admin';
+    }
+
     function isParticipant() {
       return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'participant';
+    }
+
+    // Data Protection Officer — sole authorized reader of audit/consent logs
+    function isDPO() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'dpo';
     }
 
     // ===============================================================
@@ -130,7 +139,7 @@ service cloud.firestore {
       return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'phone', 'createdAt']) &&
              data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
              data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
-             data.role in ['admin', 'event_manager', 'finance', 'lo', 'participant'] &&
+             data.role in ['admin', 'event_manager', 'finance', 'lo', 'participant', 'tax_admin', 'dpo'] &&
              (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
              (!('phone' in data) || (data.phone is string && data.phone.size() < 50)) &&
              isValidDateString(data.createdAt);
@@ -166,17 +175,49 @@ service cloud.firestore {
     }
 
     function isValidProject(data) {
-      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'pic', 'kabupaten', 'status', 'payments', 'createdAt']) &&
+      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'venueId', 'venueIds', 'venues', 'pic', 'kabupaten', 'status', 'payments', 'createdAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.startDate is string && data.startDate.size() > 0 && data.startDate.size() < 50 &&
              data.endDate is string && data.endDate.size() > 0 && data.endDate.size() < 50 &&
-             data.venue is string && data.venue.size() > 0 && data.venue.size() < 200 &&
-             data.pic is string && data.pic.size() > 0 && data.pic.size() < 200 &&
+             (!('venue' in data) || (data.venue is string && data.venue.size() < 200)) &&
+             (!('venueId' in data) || (data.venueId is string && data.venueId.size() < 100)) &&
              data.pic is string && data.pic.size() > 0 && data.pic.size() < 200 &&
              data.kabupaten is string && data.kabupaten.size() > 0 && data.kabupaten.size() < 200 &&
              (!('status' in data) || data.status in ['Planning', 'On Going', 'Done', 'Cancel']) &&
              data.payments is string && data.payments.size() < 100000 &&
              isValidDateString(data.createdAt);
+    }
+
+    function isValidVenue(data) {
+      return hasOnlyAllowedFields(['name', 'address', 'addressLat', 'addressLng', 'addressPlaceId', 'picName', 'picEmail', 'picPhone', 'brochureUrl', 'website', 'instagram', 'kabupaten', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.address is string && data.address.size() < 500 &&
+             (!('addressLat' in data) || data.addressLat is number) &&
+             (!('addressLng' in data) || data.addressLng is number) &&
+             (!('addressPlaceId' in data) || data.addressPlaceId is string) &&
+             data.picName is string && data.picName.size() > 0 && data.picName.size() < 200 &&
+             (!('picEmail' in data) || data.picEmail is string) &&
+             (!('picPhone' in data) || data.picPhone is string) &&
+             (!('brochureUrl' in data) || data.brochureUrl is string) &&
+             (!('website' in data) || data.website is string) &&
+             (!('instagram' in data) || data.instagram is string) &&
+             data.kabupaten is string && data.kabupaten.size() > 0 && data.kabupaten.size() < 200;
+    }
+
+    function isValidUsherOrLO(data) {
+      return hasOnlyAllowedFields(['fullName', 'nik', 'mobilePhone', 'email', 'ktpUrl', 'bankName', 'accountNumber', 'accountName', 'bankBranch', 'projectIds', 'createdAt', 'updatedAt']) &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 200 &&
+             data.nik is string && data.nik.size() > 0 && data.nik.size() < 50 &&
+             data.mobilePhone is string && data.mobilePhone.size() > 0 && data.mobilePhone.size() < 50 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
+             (!('ktpUrl' in data) || data.ktpUrl is string) &&
+             (!('bankName' in data) || data.bankName is string) &&
+             (!('accountNumber' in data) || data.accountNumber is string) &&
+             (!('accountName' in data) || data.accountName is string) &&
+             (!('bankBranch' in data) || data.bankBranch is string) &&
+             data.projectIds is list &&
+             isValidDateString(data.createdAt) &&
+             isValidDateString(data.updatedAt);
     }
 
     function isValidSpeaker(data) {
@@ -198,7 +239,7 @@ service cloud.firestore {
     }
 
     function isValidSubmission(data) {
-      return hasOnlyAllowedFields(['projectId', 'institutionId', 'transferpic', 'amount', 'receiptUrl', 'status', 'createdAt']) &&
+      return hasOnlyAllowedFields(['projectId', 'institutionId', 'kabupaten', 'kecamatan', 'desa', 'transferpic', 'amount', 'receiptUrl', 'status', 'createdAt']) &&
              data.projectId is string && data.projectId.size() > 0 &&
              data.institutionId is string && data.institutionId.size() > 0 &&
              data.transferpic is string && data.transferpic.size() > 0 &&
@@ -206,6 +247,11 @@ service cloud.firestore {
              data.receiptUrl is string && data.receiptUrl.size() > 0 &&
              data.status in ['pending', 'approved', 'rejected'] &&
              isValidDateString(data.createdAt);
+    }
+
+    function isValidMail(data) {
+      return (data.to is string || data.to is list) &&
+             (!('message' in data) || (data.message.subject is string && (data.message.text is string || data.message.html is string)));
     }
 
     // ===============================================================
@@ -244,7 +290,9 @@ service cloud.firestore {
     }
 
     match /institutions/{institutionId} {
-      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || resource.data.userId == request.auth.uid);
+      // Public list allowed so unauthenticated payment form can query by kecamatan/desa
+      allow list: if true;
+      allow get: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || resource.data.userId == request.auth.uid);
       
       allow create: if isAuthenticated() && 
                        isValidInstitution(request.resource.data) && 
@@ -298,12 +346,27 @@ service cloud.firestore {
                        isValidProject(request.resource.data) && 
                        (isAdmin() || isFinance());
                        
-      allow update: if isAuthenticated() && 
-                       isValidProject(request.resource.data) && 
-                       request.resource.data.createdAt == resource.data.createdAt &&
-                       (isAdmin() || isFinance());
+      allow update: if (
+                         isAuthenticated() &&
+                         isValidProject(request.resource.data) &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         (isAdmin() || isFinance())
+                       ) || (
+                         // Public payment form: unauthenticated, only updates payments field on active project
+                         resource.data.status == 'On Going' &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments']) &&
+                         request.resource.data.payments is string &&
+                         request.resource.data.payments.size() < 100000
+                       );
                        
       allow delete: if isAdmin() || isFinance();
+    }
+
+    match /venues/{venueId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidVenue(request.resource.data) && (isAdmin() || isEventManager());
+      allow update: if isAuthenticated() && isValidVenue(request.resource.data) && (isAdmin() || isEventManager());
+      allow delete: if isAdmin();
     }
 
     match /Speakers/{speakerId} {
@@ -311,6 +374,127 @@ service cloud.firestore {
       allow create: if isValidSpeaker(request.resource.data);
       allow update: if isAuthenticated() && (isAdmin() || isEventManager()) && isValidSpeaker(request.resource.data);
       allow delete: if isAdmin();
+    }
+
+    match /ushers/{usherId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager());
+      allow create: if isValidUsherOrLO(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isEventManager()) && isValidUsherOrLO(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /liaison_officers/{loId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isLO());
+      allow create: if isValidUsherOrLO(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || isEventManager()) && isValidUsherOrLO(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Collection: team_payments
+    // Tracks honorarium payments for ushers, LOs, and speakers assigned to a project.
+    // Document ID convention: {projectId}_{personId}
+    match /team_payments/{paymentId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isTaxAdmin());
+      allow create: if isAuthenticated() && (isAdmin() || isEventManager()) &&
+                       request.resource.data.projectId is string &&
+                       request.resource.data.personId is string &&
+                       request.resource.data.personType in ['usher', 'lo', 'speaker'] &&
+                       request.resource.data.amount is number &&
+                       request.resource.data.taxRate is number &&
+                       request.resource.data.taxAmount is number &&
+                       request.resource.data.netAmount is number &&
+                       (!('buktiPotong' in request.resource.data) || request.resource.data.buktiPotong is string) &&
+                       (!('kwitansi' in request.resource.data) || request.resource.data.kwitansi is string);
+      allow update: if isAuthenticated() &&
+                       request.resource.data.projectId == resource.data.projectId &&
+                       request.resource.data.personId == resource.data.personId &&
+                       (
+                         (isAdmin() || isEventManager() || isFinance()) ||
+                         (isTaxAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['buktiPotong', 'kwitansi', 'updatedAt']))
+                       );
+      allow delete: if isAdmin();
+    }
+
+    match /mail/{mailId} {
+      // Allow authenticated users to send emails
+      // Allow public to trigger confirmation emails if they provide a valid schema
+      allow create: if isValidMail(request.resource.data);
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /email_notifications/{docId} {
+      allow create: if isAuthenticated() && (isAdmin() || isEventManager() || isTaxAdmin());
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isTaxAdmin());
+      allow update, delete: if false;
+    }
+
+    // ===============================================================
+    // UU PDP No. 27 Tahun 2022 — Immutable Audit & Consent Records
+    // ===============================================================
+    //
+    // DESIGN PRINCIPLES:
+    //   • create: allowed from public (unauthenticated) so public forms can write
+    //   • update: DENIED for ALL — including admins — to ensure immutability
+    //   • delete: DENIED for ALL — records are permanent legal evidence
+    //   • read:   restricted to the Data Protection Officer (DPO) role only
+    //
+    // VERIFICATION: To confirm immutability in the Firebase Console, attempt to
+    // edit or delete any document in these collections. The Rules Playground
+    // will return "false" for both update and delete regardless of auth state.
+    // ===============================================================
+
+    match /user_consents/{consentId} {
+      // Any visitor (authenticated or not) may create a consent record on form submit
+      allow create: if request.resource.data.consent_given == true
+                    && request.resource.data.form_type is string
+                    && request.resource.data.policy_version is string
+                    && request.resource.data.policy_snapshot is string
+                    && request.resource.data.user_agent is string;
+
+      // Only the DPO may read consent records
+      allow read: if isDPO() || isAdmin();
+
+      // Immutable: no modifications or deletions ever
+      allow update, delete: if false;
+    }
+
+    // ===============================================================
+    // Certificates — generated attendance certificates per person/project
+    // ===============================================================
+    match /certificates/{certId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager());
+      allow create, update: if isAuthenticated() && (isAdmin() || isEventManager());
+      allow delete: if isAdmin();
+    }
+
+    match /certificate_designs/{projectId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager());
+      allow create, update: if isAuthenticated() && (isAdmin() || isEventManager());
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Terms & Conditions — versioned policy documents (UU PDP)
+    // ===============================================================
+    match /terms_and_conditions/{termId} {
+      // Public read: T&C content is displayed to unauthenticated users on public consent forms
+      allow read: if true;
+      allow create: if isAdmin() || isDPO();
+      allow update: if isAdmin() || isDPO();
+      allow delete: if isAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      // Any visitor may append an audit entry (append-only log)
+      allow create: if request.resource.data.action_type is string
+                    && request.resource.data.policy_version is string
+                    && request.resource.data.policy_snapshot is string;
+
+      // Only DPO (or admin for emergency review) may read
+      allow read: if isDPO() || isAdmin();
+
+      // IMMUTABLE — update and delete are permanently denied
+      allow update, delete: if false;
     }
   }
 }

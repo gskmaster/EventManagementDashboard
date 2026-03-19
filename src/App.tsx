@@ -11,9 +11,21 @@ import Projects from './pages/Projects';
 import Users from './pages/Users';
 import Speakers from './pages/Speakers';
 import ProjectDetail from './pages/ProjectDetail';
-import PublicRegistration from './pages/PublicRegistration';
-import PublicSpeakerRegistration from './pages/PublicSpeakerRegistration';
-import PublicPaymentRegistration from './pages/PublicPaymentRegistration';
+import PublicRegistration from './pages/public-form/PublicRegistration';
+import PublicSpeakerRegistration from './pages/public-form/PublicSpeakerRegistration';
+import PublicPaymentRegistration from './pages/public-form/PublicPaymentRegistration';
+import Venues from './pages/Venues';
+import Ushers from './pages/Ushers';
+import LiaisonOfficers from './pages/LiaisonOfficers';
+import PublicUsherRegistration from './pages/public-form/PublicUsherRegistration';
+import PublicLORegistration from './pages/public-form/PublicLORegistration';
+import TaxManagement from './pages/TaxManagement';
+import TaxDetail from './pages/TaxDetail';
+import LegalManagement from './pages/LegalManagement';
+import LegalDetail from './pages/LegalDetail';
+import LegalTerms from './pages/LegalTerms';
+import CertificateManagement from './pages/CertificateManagement';
+import CertificateDetail from './pages/CertificateDetail';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { user, profile, loading } = useAuth();
@@ -46,6 +58,9 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register/:projectId" element={<PublicRegistration />} />
             <Route path="/register-speaker/:projectId" element={<PublicSpeakerRegistration />} />
+            <Route path="/register-usher" element={<PublicUsherRegistration />} />
+            <Route path="/register-lo" element={<PublicLORegistration />} />
+            <Route path="/pay-receipt/:projectId" element={<PublicPaymentRegistration />} />
             <Route path="/pay-receipt/:projectId/:institutionId" element={<PublicPaymentRegistration />} />
             <Route 
               path="/" 
@@ -63,13 +78,29 @@ export default function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/projects/:projectId" 
+            <Route
+              path="/projects/:projectId"
               element={
-                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                <ProtectedRoute allowedRoles={['admin', 'event_manager', 'tax_admin']}>
                   <ProjectDetail />
                 </ProtectedRoute>
-              } 
+              }
+            />
+            <Route
+              path="/tax-management"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager', 'tax_admin']}>
+                  <TaxManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tax-management/:projectId"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager', 'tax_admin']}>
+                  <TaxDetail />
+                </ProtectedRoute>
+              }
             />
             <Route 
               path="/registration" 
@@ -103,13 +134,77 @@ export default function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/users" 
+            <Route
+              path="/users"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <Users />
                 </ProtectedRoute>
-              } 
+              }
+            />
+            <Route
+              path="/venues"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                  <Venues />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ushers"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                  <Ushers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/liaison-officers"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager', 'lo']}>
+                  <LiaisonOfficers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/legal-management"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'dpo']}>
+                  <LegalManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/legal-management/terms"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'dpo']}>
+                  <LegalTerms />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/legal-management/:projectId"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'dpo']}>
+                  <LegalDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/certificate-management"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                  <CertificateManagement />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/certificate-management/:projectId"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'event_manager']}>
+                  <CertificateDetail />
+                </ProtectedRoute>
+              }
             />
           </Routes>
         </BrowserRouter>
