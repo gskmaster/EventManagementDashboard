@@ -47,6 +47,10 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
 
+  if (profile && ['lo', 'usher'].includes(profile.role)) {
+    return <Navigate to="/lo-dashboard" replace />;
+  }
+
   if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
     return <Navigate to="/" replace />;
   }
