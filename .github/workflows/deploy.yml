@@ -47,11 +47,14 @@ jobs:
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
       - name: Deploy to GCP VM
-        uses: google-github-actions/ssh-compute@v1
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          instance_name: 'eveniser-gsk'
-          zone: 'asia-southeast2-c'
-          project_id: ${{ env.PROJECT_ID }}
-          ssh_private_key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-          user: 'github_action'
-          command: 'sudo gcloud auth configure-docker --quiet && sudo docker pull gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} && sudo docker stop ${{ env.SERVICE_NAME }} || true; sudo docker rm ${{ env.SERVICE_NAME }} || true; sudo docker run -d --name ${{ env.SERVICE_NAME }} --restart always -p 80:80 gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}'
+          host: 34.101.208.207
+          username: github_action
+          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          script: |
+            sudo gcloud auth configure-docker --quiet
+            sudo docker pull gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+            sudo docker stop ${{ env.SERVICE_NAME }} || true
+            sudo docker rm ${{ env.SERVICE_NAME }} || true
+            sudo docker run -d --name ${{ env.SERVICE_NAME }} --restart always -p 80:80 gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
