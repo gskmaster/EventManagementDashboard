@@ -46,11 +46,14 @@ jobs:
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
 
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
+      - name: Deploy to GCP VM
+        uses: google-github-actions/ssh-compute@v1
         with:
-          service: ${{ env.SERVICE_NAME }}
-          region: ${{ env.REGION }}
-          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-          platform: managed
-          allow_unauthenticated: true
+          instance_name: 'eveniser-gsk'
+          zone: 'asia-southeast2-c'
+          command: |
+             sudo gcloud auth configure-docker --quiet
+             sudo docker pull gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+             sudo docker stop ${{ env.SERVICE_NAME }} || true
+             sudo docker rm ${{ env.SERVICE_NAME }} || true
+             sudo docker run -d --name ${{ env.SERVICE_NAME }} --restart always -p 80:80 gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
