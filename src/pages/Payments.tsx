@@ -6,7 +6,7 @@ import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
-import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell, Mail } from 'lucide-react';
 import { locations } from '../data/locations';
 
 export default function Payments() {
@@ -371,6 +371,9 @@ export default function Payments() {
       } else if (sortColumn === 'transferpic') {
         aValue = getPaymentDetails(a.id).transferpic || '';
         bValue = getPaymentDetails(b.id).transferpic || '';
+      } else if (sortColumn === 'email') {
+        aValue = getPaymentDetails(a.id).email || '';
+        bValue = getPaymentDetails(b.id).email || '';
       }
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
@@ -639,6 +642,12 @@ export default function Payments() {
                     >
                       Transfer PIC <SortIcon column="transferpic" />
                     </th>
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
+                      onClick={() => handleSort('email')}
+                    >
+                      Email <SortIcon column="email" />
+                    </th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -711,8 +720,30 @@ export default function Payments() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                           {details.transferpic || '-'}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
+                          {details.email || '-'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                           <div className="flex items-center justify-center space-x-2">
+                            {details.email && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const subject = encodeURIComponent("Konfirmasi Pembayaran Transfer - " + (selectedProject?.name || ''));
+                                  const body = encodeURIComponent(
+                                    `Halo ${details.transferpic || 'Bapak/Ibu'},\n\n` +
+                                    `Kami dari panitia ${selectedProject?.name || ''} ingin mengonfirmasi mengenai pembayaran transfer Anda dari Desa ${inst.desa}, Kecamatan ${inst.kecamatan}.\n\n` +
+                                    `[Isi pesan Anda di sini]\n\n` +
+                                    `Terima kasih.`
+                                  );
+                                  window.location.href = `mailto:${details.email}?subject=${subject}&body=${body}`;
+                                }}
+                                className="text-blue-600 hover:text-blue-900 bg-blue-50 p-1.5 rounded-md transition-colors"
+                                title="Kirim Email"
+                              >
+                                <Mail className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleEditClick(inst)}
                               className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 rounded-md transition-colors"
@@ -727,7 +758,7 @@ export default function Payments() {
                   })}
                   {paginatedInstitutions.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                      <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
                         No areas found matching your filters.
                       </td>
                     </tr>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
+import QRCode from 'qrcode';
 import { Calendar, MapPin, User, CheckCircle2, FileText, Loader2 } from 'lucide-react';
 import Select from 'react-select';
 import { locations } from '../../data/locations';
@@ -112,7 +113,21 @@ export default function PublicRegistration() {
         createdAt: new Date().toISOString()
       };
 
-      await addDoc(collection(db, 'persons'), newPerson);
+      const personRef = await addDoc(collection(db, 'persons'), newPerson);
+
+      // Generate QR code and upload to Storage
+      let qrCodeUrl = '';
+      try {
+        const qrDataUrl = await QRCode.toDataURL(personRef.id, { width: 300, margin: 2 });
+        const qrRes = await fetch(qrDataUrl);
+        const qrBlob = await qrRes.blob();
+        const qrRef = ref(storage, `qrcodes/${personRef.id}.png`);
+        const qrUpload = await uploadBytes(qrRef, qrBlob);
+        qrCodeUrl = await getDownloadURL(qrUpload.ref);
+        await updateDoc(personRef, { qrCodeUrl });
+      } catch (qrErr) {
+        console.error('Error generating QR code:', qrErr);
+      }
 
       await logConsent({
         formType: 'public_registration',
@@ -121,34 +136,45 @@ export default function PublicRegistration() {
         projectId,
       });
 
-      // Trigger confirmation email via Firebase Extension (configured with Mailgun)
+      // Trigger confirmation email with QR code
       if (formData.email) {
         try {
-          await addDoc(collection(db, 'mail'), {
+          const qrSection = qrCodeUrl
+            ? `<div style="text-align:center;margin:24px 0;">
+                <p style="font-weight:600;margin-bottom:8px;">QR Code Kehadiran Anda:</p>
+                <img src="${qrCodeUrl}" alt="QR Code" style="width:180px;height:180px;border:1px solid #e2e8f0;border-radius:8px;" />
+                <p style="font-size:12px;color:#64748b;margin-top:8px;">Tunjukkan QR code ini saat check-in di lokasi acara.</p>
+              </div>`
+            : '';
+
+          const mailPayload: Record<string, unknown> = {
             to: formData.email,
             message: {
               subject: `Pendaftaran Berhasil: ${project.name}`,
               html: `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded: 8px;">
-                  <h1 style="color: #4f46e5; margin-bottom: 24px;">Konfirmasi Pendaftaran</h1>
+                <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:8px;">
+                  <h1 style="color:#4f46e5;margin-bottom:24px;">Konfirmasi Pendaftaran</h1>
                   <p>Halo <strong>${formData.fullName}</strong>,</p>
                   <p>Terima kasih telah mendaftar untuk acara <strong>${project.name}</strong>.</p>
-                  <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin: 24px 0;">
-                    <h3 style="margin-top: 0;">Detail Acara:</h3>
-                    <p style="margin-bottom: 8px;"><strong>📅 Tanggal:</strong> ${project.startDate} - ${project.endDate}</p>
-                    <p style="margin-bottom: 0;"><strong>📍 Lokasi:</strong> ${project.venue}, ${project.kabupaten}</p>
+                  <div style="background-color:#f8fafc;padding:16px;border-radius:8px;margin:24px 0;">
+                    <h3 style="margin-top:0;">Detail Acara:</h3>
+                    <p style="margin-bottom:8px;"><strong>📅 Tanggal:</strong> ${project.startDate} – ${project.endDate}</p>
+                    <p style="margin-bottom:8px;"><strong>📍 Lokasi:</strong> ${project.venue}, ${project.kabupaten}</p>
                   </div>
+                  ${qrSection}
                   <p>Silakan simpan email ini sebagai bukti pendaftaran Anda.</p>
-                  <p style="margin-top: 32px; font-size: 14px; color: #64748b;">Sampai jumpa di lokasi!</p>
-                  <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
-                  <p style="font-size: 12px; color: #94a3b8; text-align: center;">Email ini dikirim otomatis oleh Event Management System.</p>
+                  <p style="margin-top:32px;font-size:14px;color:#64748b;">Sampai jumpa di lokasi!</p>
+                  <hr style="border:0;border-top:1px solid #e2e8f0;margin:32px 0;">
+                  <p style="font-size:12px;color:#94a3b8;text-align:center;">Email ini dikirim otomatis oleh Event Management System.</p>
                 </div>
-              `
+              `,
+              ...(qrCodeUrl ? { attachments: [{ filename: 'qr-code-hadir.png', path: qrCodeUrl }] } : {}),
             }
-          });
+          };
+
+          await addDoc(collection(db, 'mail'), mailPayload);
         } catch (mailErr) {
-          // We don't want to block the success screen if the email fails to trigger
-          console.error("Error triggering confirmation email:", mailErr);
+          console.error('Error triggering confirmation email:', mailErr);
         }
       }
 

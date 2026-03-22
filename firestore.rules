@@ -131,15 +131,25 @@ service cloud.firestore {
       return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'dpo';
     }
 
+    function isUsher() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserRole() == 'usher';
+    }
+
+    // Any field-staff role that can submit event reports
+    function isFieldStaff() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             getUserRole() in ['lo', 'usher', 'event_manager', 'admin'];
+    }
+
     // ===============================================================
     // Domain Validators
     // ===============================================================
 
     function isValidUser(data) {
-      return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'phone', 'createdAt']) &&
+      return hasOnlyAllowedFields(['uid', 'email', 'role', 'displayName', 'phone', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy']) &&
              data.uid is string && data.uid.size() > 0 && data.uid.size() < 100 &&
              data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
-             data.role in ['admin', 'event_manager', 'finance', 'lo', 'participant', 'tax_admin', 'dpo'] &&
+             data.role in ['admin', 'event_manager', 'finance', 'lo', 'participant', 'tax_admin', 'dpo', 'usher'] &&
              (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
              (!('phone' in data) || (data.phone is string && data.phone.size() < 50)) &&
              isValidDateString(data.createdAt);
@@ -157,7 +167,7 @@ service cloud.firestore {
     }
 
     function isValidPerson(data) {
-      return hasOnlyAllowedFields(['institutionId', 'userId', 'projectId', 'nik', 'fullName', 'mobilePhone', 'email', 'kabupaten', 'kecamatan', 'desa', 'posisi', 'posisiLainnya', 'attendanceStatus', 'createdAt']) &&
+      return hasOnlyAllowedFields(['institutionId', 'userId', 'projectId', 'nik', 'fullName', 'mobilePhone', 'email', 'kabupaten', 'kecamatan', 'desa', 'posisi', 'posisiLainnya', 'attendanceStatus', 'ktpUrl', 'qrCodeUrl', 'createdAt']) &&
              (!('institutionId' in data) || (data.institutionId is string && data.institutionId.size() < 100)) &&
              (!('userId' in data) || (data.userId is string && data.userId.size() < 100)) &&
              (!('projectId' in data) || (data.projectId is string && data.projectId.size() < 100)) &&
@@ -175,7 +185,7 @@ service cloud.firestore {
     }
 
     function isValidProject(data) {
-      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'venueId', 'venueIds', 'venues', 'pic', 'kabupaten', 'status', 'payments', 'createdAt']) &&
+      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'venueId', 'venueIds', 'venues', 'pic', 'kabupaten', 'status', 'payments', 'createdAt', 'createdBy']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.startDate is string && data.startDate.size() > 0 && data.startDate.size() < 50 &&
              data.endDate is string && data.endDate.size() > 0 && data.endDate.size() < 50 &&
@@ -189,7 +199,7 @@ service cloud.firestore {
     }
 
     function isValidVenue(data) {
-      return hasOnlyAllowedFields(['name', 'address', 'addressLat', 'addressLng', 'addressPlaceId', 'picName', 'picEmail', 'picPhone', 'brochureUrl', 'website', 'instagram', 'kabupaten', 'createdAt']) &&
+      return hasOnlyAllowedFields(['name', 'address', 'addressLat', 'addressLng', 'addressPlaceId', 'picName', 'picEmail', 'picPhone', 'brochureUrl', 'website', 'instagram', 'kabupaten', 'createdAt', 'createdBy', 'updatedAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.address is string && data.address.size() < 500 &&
              (!('addressLat' in data) || data.addressLat is number) &&
@@ -205,7 +215,7 @@ service cloud.firestore {
     }
 
     function isValidUsherOrLO(data) {
-      return hasOnlyAllowedFields(['fullName', 'nik', 'mobilePhone', 'email', 'ktpUrl', 'bankName', 'accountNumber', 'accountName', 'bankBranch', 'projectIds', 'createdAt', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['fullName', 'nik', 'mobilePhone', 'email', 'ktpUrl', 'bankName', 'accountNumber', 'accountName', 'bankBranch', 'projectIds', 'createdAt', 'createdBy', 'updatedAt']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 200 &&
              data.nik is string && data.nik.size() > 0 && data.nik.size() < 50 &&
              data.mobilePhone is string && data.mobilePhone.size() > 0 && data.mobilePhone.size() < 50 &&
@@ -221,7 +231,7 @@ service cloud.firestore {
     }
 
     function isValidSpeaker(data) {
-      return hasOnlyAllowedFields(['nik', 'fullName', 'email', 'phoneNumber', 'institution', 'expertise', 'ktpUrl', 'projectIds', 'bankName', 'bankAccount', 'bankBranch', 'accountName', 'createdAt', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['nik', 'fullName', 'email', 'phoneNumber', 'institution', 'expertise', 'ktpUrl', 'projectIds', 'bankName', 'bankAccount', 'bankBranch', 'accountName', 'createdAt', 'createdBy', 'updatedAt']) &&
              data.nik is string && data.nik.size() > 0 &&
              data.fullName is string && data.fullName.size() > 0 &&
              data.email is string && isValidEmail(data.email) &&
@@ -258,6 +268,13 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
+    match /login_attempts/{attemptId} {
+      allow create: if request.resource.data.ip is string
+                    && request.resource.data.email is string
+                    && request.resource.data.timestamp is string;
+      allow read, update, delete: if isAdmin();
+    }
+
     match /payment_submissions/{submissionId} {
       allow read: if isAuthenticated() && (isAdmin() || isFinance());
       allow create: if isValidSubmission(request.resource.data) && 
@@ -269,20 +286,24 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isAuthenticated();
-      
-      allow create: if isAuthenticated() && 
-                       isValidUser(request.resource.data) && 
+
+      allow create: if isAuthenticated() &&
+                       isValidUser(request.resource.data) &&
                        (
-                         (isOwner(userId) && uidUnchanged() && request.resource.data.role == 'participant') || 
+                         (isOwner(userId) && uidUnchanged() && request.resource.data.role in ['participant', 'lo']) ||
                          isAdmin()
                        );
                        
-      allow update: if isAuthenticated() && 
-                       isValidUser(request.resource.data) && 
+      allow update: if isAuthenticated() &&
+                       isValidUser(request.resource.data) &&
                        request.resource.data.email == resource.data.email &&
                        request.resource.data.createdAt == resource.data.createdAt &&
                        (
-                         (isOwner(userId) && uidNotModified() && request.resource.data.role == resource.data.role) || 
+                         (isOwner(userId) && uidNotModified() && (
+                           request.resource.data.role == resource.data.role ||
+                           // Allow self-correction between lo/usher roles during portal login
+                           (resource.data.role in ['lo', 'usher'] && request.resource.data.role in ['lo', 'usher'])
+                         )) ||
                          isAdmin()
                        );
                        
@@ -314,7 +335,7 @@ service cloud.firestore {
     }
 
     match /persons/{personId} {
-      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || resource.data.userId == request.auth.uid);
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || isUsher() || resource.data.userId == request.auth.uid);
       
       allow create: if isValidPerson(request.resource.data) && 
                        (
@@ -331,7 +352,7 @@ service cloud.firestore {
                        (
                          isAdmin() ||
                          isEventManager() ||
-                         (isLO() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus'])) ||
+                         ((isLO() || isUsher()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus'])) ||
                          (resource.data.userId == request.auth.uid && request.resource.data.attendanceStatus == resource.data.attendanceStatus)
                        );
                        
@@ -340,7 +361,7 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow get: if true;
-      allow list: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO());
+      allow list: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO() || isUsher());
       
       allow create: if isAuthenticated() && 
                        isValidProject(request.resource.data) && 
@@ -377,16 +398,54 @@ service cloud.firestore {
     }
 
     match /ushers/{usherId} {
-      allow read: if isAuthenticated() && (isAdmin() || isEventManager());
+      // list: any authenticated user can query — needed during login to determine role before it's confirmed
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && (isAdmin() || isEventManager() || isUsher() || isLO());
       allow create: if isValidUsherOrLO(request.resource.data);
-      allow update: if isAuthenticated() && (isAdmin() || isEventManager()) && isValidUsherOrLO(request.resource.data);
+      allow update: if isAuthenticated() &&
+                       isValidUsherOrLO(request.resource.data) &&
+                       (
+                         isAdmin() ||
+                         isEventManager() ||
+                         // Usher can update their own record
+                         (isUsher() && resource.data.email == request.auth.token.email)
+                       );
       allow delete: if isAdmin();
     }
 
     match /liaison_officers/{loId} {
-      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isLO());
+      // list: any authenticated user can query — needed during login before role is confirmed
+      allow list: if isAuthenticated();
+      allow get: if isAuthenticated() && (isAdmin() || isEventManager() || isLO() || isUsher());
       allow create: if isValidUsherOrLO(request.resource.data);
-      allow update: if isAuthenticated() && (isAdmin() || isEventManager()) && isValidUsherOrLO(request.resource.data);
+      allow update: if isAuthenticated() &&
+                       isValidUsherOrLO(request.resource.data) &&
+                       (
+                         isAdmin() ||
+                         isEventManager() ||
+                         // LO can update their own profile record
+                         (isLO() && resource.data.email == request.auth.token.email)
+                       );
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Kwitansi Uploads — receipt documents uploaded by LOs per participant
+    // ===============================================================
+    match /kwitansi_uploads/{kwitansiId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isLO());
+      allow create: if isLO() &&
+                       request.resource.data.projectId is string && request.resource.data.projectId.size() > 0 &&
+                       request.resource.data.personId is string && request.resource.data.personId.size() > 0 &&
+                       request.resource.data.kwitansiUrl is string && request.resource.data.kwitansiUrl.size() > 0 &&
+                       (!('loEmail' in request.resource.data) || request.resource.data.loEmail is string) &&
+                       isValidDateString(request.resource.data.createdAt) &&
+                       isValidDateString(request.resource.data.updatedAt);
+      allow update: if isAuthenticated() &&
+                       (isAdmin() || isEventManager() || isLO()) &&
+                       request.resource.data.projectId == resource.data.projectId &&
+                       request.resource.data.personId == resource.data.personId &&
+                       request.resource.data.kwitansiUrl is string;
       allow delete: if isAdmin();
     }
 
@@ -413,6 +472,10 @@ service cloud.firestore {
                          (isTaxAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['buktiPotong', 'kwitansi', 'updatedAt']))
                        );
       allow delete: if isAdmin();
+    }
+
+    match /desa_taxes/{taxId} {
+      allow read, write: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isTaxAdmin());
     }
 
     match /mail/{mailId} {
@@ -474,6 +537,18 @@ service cloud.firestore {
     }
 
     // ===============================================================
+    // Email Templates — reusable dynamic email templates
+    // ===============================================================
+    match /EmailTemplates/{templateId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager());
+      allow create, update: if isAdmin() &&
+                               request.resource.data.name is string && request.resource.data.name.size() > 0 &&
+                               request.resource.data.subject is string && request.resource.data.subject.size() > 0 &&
+                               request.resource.data.body is string;
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
     // Terms & Conditions — versioned policy documents (UU PDP)
     // ===============================================================
     match /terms_and_conditions/{termId} {
@@ -481,6 +556,29 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAdmin() || isDPO();
       allow update: if isAdmin() || isDPO();
+      allow delete: if isAdmin();
+    }
+
+    // ===============================================================
+    // Event Reports — field activity reports submitted by LO / Usher / Event Manager
+    // ===============================================================
+    match /event_reports/{reportId} {
+      allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isLO() || isUsher());
+      allow create: if isFieldStaff() &&
+                       request.resource.data.projectId is string && request.resource.data.projectId.size() > 0 &&
+                       request.resource.data.date is string && request.resource.data.date.size() > 0 &&
+                       request.resource.data.description is string &&
+                       request.resource.data.photoUrls is list &&
+                       request.resource.data.authorEmail is string &&
+                       isValidDateString(request.resource.data.createdAt) &&
+                       isValidDateString(request.resource.data.updatedAt);
+      allow update: if isAuthenticated() &&
+                       (
+                         isAdmin() ||
+                         isEventManager() ||
+                         (isFieldStaff() && resource.data.authorEmail == request.auth.token.email)
+                       ) &&
+                       request.resource.data.projectId == resource.data.projectId;
       allow delete: if isAdmin();
     }
 

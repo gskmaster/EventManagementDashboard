@@ -587,8 +587,36 @@ export default function ProjectDetail() {
             </div>
           </div>
 
-          {/* Peserta Terdaftar Section */}
+          {/* Summary Cards */}
           <div className="px-8 pt-7 pb-5">
+            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Ringkasan Tim & Pembayaran</h2>
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { type: 'payments' as ModalType,   color: 'emerald', Icon: CreditCard, value: fmt(totalEventPayments), label: 'Total Pembayaran' },
+                { type: 'speakers' as ModalType,   color: 'blue',   Icon: Mic,       value: speakers.length,   label: 'Narasumber' },
+                { type: 'ushers' as ModalType,     color: 'violet', Icon: UserCheck, value: ushers.length,     label: 'Usher' },
+                { type: 'liaisons' as ModalType,   color: 'teal',   Icon: Handshake, value: liaisons.length,   label: 'Liaison Officer' },
+              ].map(({ type, color, Icon, value, label }) => (
+                <div
+                  key={type}
+                  onClick={() => { setActiveModal(type); setModalSearch(''); }}
+                  className="group cursor-pointer bg-white p-5 rounded-xl border border-slate-200 hover:shadow-md transition-all relative overflow-hidden"
+                >
+                  <div className={`w-10 h-10 rounded-xl bg-${color}-50 flex items-center justify-center mb-3 text-${color}-600`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <p className="text-xl font-bold text-slate-900 mb-0.5 leading-tight">{value}</p>
+                  <p className="text-xs text-slate-500">{label}</p>
+                  <div className={`mt-3 text-[11px] font-medium text-${color}-600 opacity-0 group-hover:opacity-100 transition-opacity`}>
+                    Lihat Detail →
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Peserta Terdaftar Section */}
+          <div className="px-8 pb-7">
             <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Peserta Terdaftar</h2>
             <div className="grid grid-cols-3 gap-4">
               {([
@@ -617,34 +645,6 @@ export default function ProjectDetail() {
                 <div
                   key={filter}
                   onClick={() => { setActiveModal('registered'); setModalAttendanceFilter(filter); setModalSearch(''); }}
-                  className="group cursor-pointer bg-white p-5 rounded-xl border border-slate-200 hover:shadow-md transition-all relative overflow-hidden"
-                >
-                  <div className={`w-10 h-10 rounded-xl bg-${color}-50 flex items-center justify-center mb-3 text-${color}-600`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <p className="text-xl font-bold text-slate-900 mb-0.5 leading-tight">{value}</p>
-                  <p className="text-xs text-slate-500">{label}</p>
-                  <div className={`mt-3 text-[11px] font-medium text-${color}-600 opacity-0 group-hover:opacity-100 transition-opacity`}>
-                    Lihat Detail →
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="px-8 pb-7">
-            <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Ringkasan Tim & Pembayaran</h2>
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { type: 'payments' as ModalType,   color: 'emerald', Icon: CreditCard, value: fmt(totalEventPayments), label: 'Total Pembayaran' },
-                { type: 'speakers' as ModalType,   color: 'blue',   Icon: Mic,       value: speakers.length,   label: 'Narasumber' },
-                { type: 'ushers' as ModalType,     color: 'violet', Icon: UserCheck, value: ushers.length,     label: 'Usher' },
-                { type: 'liaisons' as ModalType,   color: 'teal',   Icon: Handshake, value: liaisons.length,   label: 'Liaison Officer' },
-              ].map(({ type, color, Icon, value, label }) => (
-                <div
-                  key={type}
-                  onClick={() => { setActiveModal(type); setModalSearch(''); }}
                   className="group cursor-pointer bg-white p-5 rounded-xl border border-slate-200 hover:shadow-md transition-all relative overflow-hidden"
                 >
                   <div className={`w-10 h-10 rounded-xl bg-${color}-50 flex items-center justify-center mb-3 text-${color}-600`}>
@@ -1024,9 +1024,27 @@ export default function ProjectDetail() {
                 </h3>
                 <p className="text-sm text-slate-500">{project.name}</p>
               </div>
-              <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                <XCircle className="w-6 h-6 text-slate-400" />
-              </button>
+              <div className="flex items-center gap-2">
+                {(activeModal === 'speakers' || activeModal === 'ushers' || activeModal === 'liaisons') && (
+                  <button
+                    onClick={() => {
+                      const tabMap: Record<string, AssignTab> = { speakers: 'speakers', ushers: 'ushers', liaisons: 'liaisons' };
+                      setAssignTab(tabMap[activeModal]);
+                      setAssignSearch('');
+                      setAssignPage(1);
+                      closeModal();
+                      setShowAssignModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                  >
+                    <UsersRound className="w-4 h-4" />
+                    Tugaskan Tim
+                  </button>
+                )}
+                <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                  <XCircle className="w-6 h-6 text-slate-400" />
+                </button>
+              </div>
             </div>
             <div className="p-4 border-b border-slate-100 bg-slate-50/50">
               <div className="relative">

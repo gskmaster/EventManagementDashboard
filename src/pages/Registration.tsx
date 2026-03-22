@@ -184,7 +184,7 @@ export default function Registration() {
   const handleRegisterInstitution = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !kabupaten || !kecamatan || !desa) {
-      showToast("Please fill in Kabupaten, Kecamatan, and Desa.", "error");
+      showToast("Harap isi Kabupaten, Kecamatan, dan Desa.", "error");
       return;
     }
     try {
@@ -194,7 +194,7 @@ export default function Registration() {
           kecamatan,
           kabupaten,
         });
-        showToast("Region updated successfully!", "success");
+        showToast("Wilayah berhasil diperbarui!", "success");
       } else {
         await addDoc(collection(db, 'institutions'), {
           userId: user.uid,
@@ -204,7 +204,7 @@ export default function Registration() {
           paymentStatus: 'pending',
           createdAt: new Date().toISOString()
         });
-        showToast("Region added successfully!", "success");
+        showToast("Wilayah berhasil ditambahkan!", "success");
       }
       setShowInstModal(false);
       setEditingInstId(null);
@@ -212,7 +212,7 @@ export default function Registration() {
       fetchData();
     } catch (error) {
       console.error("Error saving institution:", error);
-      showToast("Failed to save region.", "error");
+      showToast("Gagal menyimpan wilayah.", "error");
     }
   };
 
@@ -227,16 +227,16 @@ export default function Registration() {
   const handleDeleteInstitution = async (id: string) => {
     setConfirmModal({
       isOpen: true,
-      title: "Delete Region",
-      message: "Are you sure you want to delete this region? This action cannot be undone.",
+      title: "Hapus Wilayah",
+      message: "Apakah Anda yakin ingin menghapus wilayah ini? Tindakan ini tidak dapat dibatalkan.",
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, 'institutions', id));
           fetchData();
-          showToast("Region deleted successfully!", "success");
+          showToast("Wilayah berhasil dihapus!", "success");
         } catch (error) {
           console.error("Error deleting institution:", error);
-          showToast("Failed to delete region.", "error");
+          showToast("Gagal menghapus wilayah.", "error");
         } finally {
           setConfirmModal(null);
         }
@@ -310,8 +310,8 @@ export default function Registration() {
         )}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Region Management</h2>
-            <p className="text-slate-500 mt-1">Manage kabupaten, kecamatan, and desa data.</p>
+            <h2 className="text-2xl font-bold text-slate-900">Manajemen Wilayah</h2>
+            <p className="text-slate-500 mt-1">Kelola data kabupaten, kecamatan, dan desa.</p>
           </div>
           <div className="flex space-x-3">
             <button
@@ -323,7 +323,7 @@ export default function Registration() {
               className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
             >
               <Plus className="w-5 h-5 mr-2" />
-              Add Region
+              Tambah Wilayah
             </button>
           </div>
         </div>
@@ -333,7 +333,7 @@ export default function Registration() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search institutions..."
+              placeholder="Cari institusi..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -428,7 +428,7 @@ export default function Registration() {
                       {sortColumn === 'desa' && (sortDirection === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />)}
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -448,14 +448,14 @@ export default function Registration() {
                         <button 
                           onClick={() => handleEditInstitution(inst)}
                           className="text-slate-600 hover:text-indigo-600 flex items-center"
-                          title="Edit"
+                          title="Edit Wilayah"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => handleDeleteInstitution(inst.id)}
                           className="text-slate-600 hover:text-red-600 flex items-center"
-                          title="Delete"
+                          title="Hapus Wilayah"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -466,7 +466,7 @@ export default function Registration() {
                 {paginatedInstitutions.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-6 py-8 text-center text-slate-500">
-                      No regions found matching your criteria.
+                      Tidak ada wilayah yang sesuai dengan filter.
                     </td>
                   </tr>
                 )}
@@ -481,20 +481,20 @@ export default function Registration() {
                   disabled={currentPage === 1}
                   className="relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Previous
+                  Sebelumnya
                 </button>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages || totalPages === 0}
                   className="ml-3 relative inline-flex items-center px-4 py-2 border border-slate-300 text-sm font-medium rounded-md text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50"
                 >
-                  Next
+                  Berikutnya
                 </button>
               </div>
               <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                 <div className="flex items-center space-x-4">
                   <p className="text-sm text-slate-700">
-                    Showing <span className="font-medium">{sortedInstitutions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, sortedInstitutions.length)}</span> of <span className="font-medium">{sortedInstitutions.length}</span> results
+                    Menampilkan <span className="font-medium">{sortedInstitutions.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium">{Math.min(currentPage * itemsPerPage, sortedInstitutions.length)}</span> dari <span className="font-medium">{sortedInstitutions.length}</span> hasil
                   </p>
                   <select
                     value={itemsPerPage}
@@ -504,10 +504,10 @@ export default function Registration() {
                     }}
                     className="border-slate-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value={10}>10 per page</option>
-                    <option value={25}>25 per page</option>
-                    <option value={50}>50 per page</option>
-                    <option value={100}>100 per page</option>
+                    <option value={10}>10 per halaman</option>
+                    <option value={25}>25 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                    <option value={100}>100 per halaman</option>
                   </select>
                 </div>
                 <div>
@@ -517,18 +517,18 @@ export default function Registration() {
                       disabled={currentPage === 1}
                       className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
                     >
-                      <span className="sr-only">Previous</span>
+                      <span className="sr-only">Sebelumnya</span>
                       <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                     </button>
                     <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm font-medium text-slate-700">
-                      Page {currentPage} of {totalPages || 1}
+                      Halaman {currentPage} dari {totalPages || 1}
                     </span>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages || totalPages === 0}
                       className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50"
                     >
-                      <span className="sr-only">Next</span>
+                      <span className="sr-only">Berikutnya</span>
                       <ChevronRight className="h-5 w-5" aria-hidden="true" />
                     </button>
                   </nav>
@@ -543,7 +543,7 @@ export default function Registration() {
           <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-bold text-slate-900 mb-4">
-                {editingInstId ? 'Edit Region' : 'Add Region'}
+                {editingInstId ? 'Edit Wilayah' : 'Tambah Wilayah Baru'}
               </h3>
               <form onSubmit={handleRegisterInstitution}>
                 <div className="space-y-4">
@@ -560,7 +560,7 @@ export default function Registration() {
                           setDesa('');
                         }
                       }}
-                      placeholder="Select or type new Kabupaten"
+                      placeholder="Pilih atau ketik Kabupaten baru"
                       className="text-sm"
                       required
                     />
@@ -577,7 +577,7 @@ export default function Registration() {
                           setDesa('');
                         }
                       }}
-                      placeholder="Select or type new Kecamatan"
+                      placeholder="Pilih atau ketik Kecamatan baru"
                       className="text-sm"
                       required
                     />
@@ -589,16 +589,16 @@ export default function Registration() {
                       options={formDesaOptions}
                       value={desa ? { value: desa, label: desa } : null}
                       onChange={(newValue) => setDesa(newValue ? newValue.value : '')}
-                      placeholder="Select or type new Desa"
+                      placeholder="Pilih atau ketik Desa baru"
                       className="text-sm"
                       required
                     />
                   </div>
                 </div>
                 <div className="mt-6 flex justify-end space-x-3">
-                  <button type="button" onClick={() => { setShowInstModal(false); setEditingInstId(null); }} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
+                  <button type="button" onClick={() => { setShowInstModal(false); setEditingInstId(null); }} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Batal</button>
                   <button type="submit" className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700">
-                    {editingInstId ? 'Save Changes' : 'Register'}
+                    {editingInstId ? 'Simpan Perubahan' : 'Daftarkan'}
                   </button>
                 </div>
               </form>

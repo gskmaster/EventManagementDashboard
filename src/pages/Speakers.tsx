@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, storage } from '../firebase';
+import { db, storage, auth } from '../firebase';
 import { 
   collection, 
   query, 
@@ -213,6 +213,7 @@ export default function Speakers() {
         await addDoc(collection(db, 'Speakers'), {
           ...speakerData,
           createdAt: now,
+          createdBy: auth.currentUser?.email || '',
         });
       }
 
@@ -220,14 +221,14 @@ export default function Speakers() {
       fetchData();
     } catch (error) {
       console.error('Error saving speaker:', error);
-      alert('Error saving speaker. Please check console for details.');
+      alert('Gagal menyimpan narasumber. Silakan periksa konsol untuk detail.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this speaker?')) {
+    if (window.confirm('Apakah Anda yakin ingin menghapus narasumber ini? Tindakan ini tidak dapat dibatalkan.')) {
       try {
         await deleteDoc(doc(db, 'Speakers', id));
         fetchData();
@@ -249,52 +250,43 @@ export default function Speakers() {
         {/* Header Section */}
         <div className="flex justify-between items-start mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-1">Speakers Management</h1>
-          <p className="text-slate-500">Manage event speakers, expertises, and project assignments.</p>
+          <h1 className="text-2xl font-bold text-slate-900 mb-1">Manajemen Narasumber</h1>
+          <p className="text-slate-500">Kelola narasumber acara, keahlian, dan penugasan proyek.</p>
         </div>
         <div className="flex gap-3">
           <button className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium">
             <Download className="w-4 h-4 mr-2" />
-            Export
+            Ekspor
           </button>
-          <button 
+          <button
             onClick={() => handleOpenModal()}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Speaker
+            Tambah Narasumber
           </button>
         </div>
       </div>
 
-      {/* Registration Links Area */}
-      {projects.length > 0 && (
-        <div className="mb-8 bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-          <div className="flex items-center mb-3">
-            <ExternalLink className="w-5 h-5 text-indigo-600 mr-2" />
-            <h2 className="text-sm font-bold text-indigo-900">Project Registration Links</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {projects.map(project => (
-              <div key={project.id} className="bg-white p-3 rounded-lg border border-indigo-100 shadow-sm flex flex-col">
-                <span className="text-xs font-bold text-slate-500 mb-1 truncate">{project.name}</span>
-                <div className="flex items-center justify-between text-[11px] text-indigo-600 font-mono bg-slate-50 px-2 py-1.5 rounded border border-slate-100 overflow-hidden">
-                  <span className="truncate mr-2">{window.location.origin}/register-speaker/{project.id}</span>
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/register-speaker/${project.id}`);
-                      alert('Link copied to clipboard!');
-                    }}
-                    className="flex-shrink-0 hover:text-indigo-800 font-bold underline"
-                  >
-                    Copy
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Registration Link */}
+      <div className="mb-8 bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+        <div className="flex items-center mb-3">
+          <ExternalLink className="w-5 h-5 text-indigo-600 mr-2" />
+          <h2 className="text-sm font-bold text-indigo-900">Tautan Pendaftaran Narasumber</h2>
         </div>
-      )}
+        <div className="flex items-center justify-between text-[11px] text-indigo-600 font-mono bg-white px-3 py-2 rounded-lg border border-indigo-100 shadow-sm overflow-hidden">
+          <span className="truncate mr-2">{window.location.origin}/register-speaker</span>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(`${window.location.origin}/register-speaker`);
+              alert('Tautan disalin ke clipboard!');
+            }}
+            className="flex-shrink-0 hover:text-indigo-800 font-bold underline"
+          >
+            Copy
+          </button>
+        </div>
+      </div>
 
         {/* Filters/Search Bar */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
@@ -302,7 +294,7 @@ export default function Speakers() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by name, email, or NIK..."
+              placeholder="Cari nama, email, atau NIK..."
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -315,7 +307,7 @@ export default function Speakers() {
             </button>
             <button className="inline-flex items-center px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
               <Download className="w-4 h-4 mr-2" />
-              Export
+              Ekspor
             </button>
           </div>
         </div>
@@ -325,19 +317,19 @@ export default function Speakers() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
-              <p className="text-slate-500 text-sm">Loading speakers...</p>
+              <p className="text-slate-500 text-sm">Memuat narasumber...</p>
             </div>
           ) : filteredSpeakers.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <User className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="text-lg font-medium text-slate-900">No speakers found</h3>
+              <h3 className="text-lg font-medium text-slate-900">Tidak ada narasumber ditemukan</h3>
               <p className="text-slate-500 mt-1 max-w-sm mx-auto">
                 {searchTerm ? (
-                  <span>No results for your current search.</span>
+                  <span>Tidak ada hasil untuk pencarian saat ini.</span>
                 ) : (
-                  "Get started by adding your first event speaker."
+                  "Mulai dengan menambahkan narasumber pertama Anda."
                 )}
               </p>
             </div>
@@ -346,11 +338,11 @@ export default function Speakers() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Speaker Information</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact & Institution</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Expertise</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Projects</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Informasi Narasumber</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak & Institusi</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Keahlian</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Proyek</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 italic">
@@ -381,7 +373,7 @@ export default function Speakers() {
                           </div>
                           <div className="flex items-center italic text-indigo-600 font-medium">
                             <Building2 className="w-3.5 h-3.5 mr-2 text-indigo-400" />
-                            {speaker.institution || 'No Institution'}
+                            {speaker.institution || 'Tidak ada institusi'}
                           </div>
                         </div>
                       </td>
@@ -392,14 +384,14 @@ export default function Speakers() {
                               {tag}
                             </span>
                           )) : (
-                            <span className="text-xs text-slate-400 italic">No expertise added</span>
+                            <span className="text-xs text-slate-400 italic">Belum ada keahlian</span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-slate-600">
                           <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs">
-                            {speaker.projectIds?.length || 0} Projects
+                            {speaker.projectIds?.length || 0} Proyek
                           </span>
                         </div>
                       </td>
@@ -447,7 +439,7 @@ export default function Speakers() {
           <div className="relative mx-auto max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-xl font-bold text-slate-900">
-                {editingSpeaker ? 'Edit Speaker' : 'Register New Speaker'}
+                {editingSpeaker ? 'Edit Narasumber' : 'Daftarkan Narasumber Baru'}
               </h2>
               <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors text-right">
                 <X className="w-6 h-6" />
@@ -459,11 +451,11 @@ export default function Speakers() {
                 {/* Personal Info */}
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                    <User className="w-3 h-3 mr-2" /> Personal Information
+                    <User className="w-3 h-3 mr-2" /> Informasi Pribadi
                   </h3>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIK (National ID)*</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIK*</label>
                     <input
                       required
                       type="text"
@@ -474,7 +466,7 @@ export default function Speakers() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name*</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap*</label>
                     <input
                       required
                       type="text"
@@ -485,7 +477,7 @@ export default function Speakers() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address*</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Alamat Email*</label>
                     <input
                       required
                       type="email"
@@ -496,7 +488,7 @@ export default function Speakers() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Phone Number*</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nomor Telepon*</label>
                     <input
                       required
                       type="text"
@@ -510,11 +502,11 @@ export default function Speakers() {
                 {/* Professional Info */}
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                    <Award className="w-3 h-3 mr-2" /> Professional Details
+                    <Award className="w-3 h-3 mr-2" /> Detail Profesional
                   </h3>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Institution</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Institusi</label>
                     <input
                       type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm italic font-medium text-indigo-700"
@@ -524,7 +516,7 @@ export default function Speakers() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Expertise (Press Enter)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Keahlian (Tekan Enter)</label>
                     <input
                       type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
@@ -549,13 +541,13 @@ export default function Speakers() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">KTP Upload (PDF/Image)</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Unggah KTP (PDF/Gambar)</label>
                     <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-200 border-dashed rounded-xl hover:border-indigo-400 transition-colors group cursor-pointer relative">
                       <div className="space-y-1 text-center">
                         <FileText className="mx-auto h-12 w-12 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                         <div className="flex text-sm text-slate-600">
                           <label className="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
-                            <span>{ktpFile ? ktpFile.name : 'Upload KTP'}</span>
+                            <span>{ktpFile ? ktpFile.name : 'Unggah KTP'}</span>
                             <input
                               type="file"
                               className="sr-only"
@@ -564,12 +556,12 @@ export default function Speakers() {
                             />
                           </label>
                         </div>
-                        <p className="text-xs text-slate-500">PNG, JPG, PDF up to 5MB</p>
+                        <p className="text-xs text-slate-500">PNG, JPG, PDF hingga 5MB</p>
                       </div>
                     </div>
                     {editingSpeaker?.ktpUrl && !ktpFile && (
                       <p className="text-xs text-emerald-600 mt-2 flex items-center">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Existing KTP file stored
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> File KTP sudah tersimpan
                       </p>
                     )}
                   </div>
@@ -579,47 +571,47 @@ export default function Speakers() {
               {/* Bank Info */}
               <div className="space-y-4 pt-4 border-t border-slate-100 text-left">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                  <Award className="w-3 h-3 mr-2" /> Bank Account Information
+                  <Award className="w-3 h-3 mr-2" /> Informasi Rekening Bank
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Bank Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Bank</label>
                     <input
                       type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm uppercase"
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                      placeholder="e.g. BCA, MANDIRI"
+                      placeholder="contoh: BCA, Mandiri"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Account Number</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nomor Rekening</label>
                     <input
                       type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                       value={formData.bankAccount}
                       onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
-                      placeholder="Account Number"
+                      placeholder="Nomor Rekening"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Bank Branch</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Cabang Bank</label>
                     <input
                       type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
                       value={formData.bankBranch}
                       onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
-                      placeholder="Branch Name"
+                      placeholder="Nama Cabang"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Account Holder Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Pemilik Rekening</label>
                     <input
                       type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm font-semibold"
                       value={formData.accountName}
                       onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                      placeholder="As shown in bank book"
+                      placeholder="Sesuai buku tabungan"
                     />
                   </div>
                 </div>
@@ -628,7 +620,7 @@ export default function Speakers() {
               {/* Project Assignment */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                   Project Assignment (Planning & On Going)
+                   Penugasan Proyek (Perencanaan & Berjalan)
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
                   {projects
@@ -662,7 +654,7 @@ export default function Speakers() {
                   ))}
                   {projects.filter(p => p.status === 'Planning' || p.status === 'On Going').length === 0 && (
                     <div className="col-span-2 text-center py-4 text-slate-400 text-sm italic">
-                      No active projects available
+                      Tidak ada proyek aktif
                     </div>
                   )}
                 </div>
@@ -674,7 +666,7 @@ export default function Speakers() {
                   onClick={handleCloseModal}
                   className="px-6 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium transition-all text-sm"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
@@ -684,9 +676,9 @@ export default function Speakers() {
                   {submitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin text-right" />
-                      Saving...
+                      Menyimpan...
                     </>
-                  ) : editingSpeaker ? 'Update Speaker' : 'Register Speaker'}
+                  ) : editingSpeaker ? 'Perbarui Narasumber' : 'Daftarkan Narasumber'}
                 </button>
               </div>
             </form>

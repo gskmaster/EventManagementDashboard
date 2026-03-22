@@ -3,5 +3,13 @@
     "production": "gen-lang-client-0764930804",
     "local": "demo-event-management",
     "default": "demo-event-management"
+  },
+  "targets": {},
+  "etags": {
+    "gen-lang-client-0764930804": {
+      "extensionInstances": {
+        "firestore-send-email-s44z": "9af3fc7b0df9d9f7e3476ebc24d1ed3a823593a753f4dc2305fe552dca0edc43"
+      }
+    }
   }
 }

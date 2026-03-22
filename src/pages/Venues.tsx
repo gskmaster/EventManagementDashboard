@@ -104,7 +104,7 @@ export default function Venues() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.kabupaten || !form.picName) {
-      showToast('Please fill all required fields.', 'error');
+      showToast('Harap isi semua kolom yang wajib.', 'error');
       return;
     }
     setSaving(true);
@@ -119,17 +119,17 @@ export default function Venues() {
       const payload = { ...form, brochureUrl };
 
       if (editingId) {
-        await updateDoc(doc(db, 'venues', editingId), payload);
-        showToast('Venue updated successfully!', 'success');
+        await updateDoc(doc(db, 'venues', editingId), { ...payload, updatedAt: new Date().toISOString() });
+        showToast('Venue berhasil diperbarui!', 'success');
       } else {
-        await addDoc(collection(db, 'venues'), { ...payload, createdAt: new Date().toISOString() });
-        showToast('Venue added successfully!', 'success');
+        await addDoc(collection(db, 'venues'), { ...payload, createdAt: new Date().toISOString(), createdBy: user?.email || '' });
+        showToast('Venue berhasil ditambahkan!', 'success');
       }
       setShowModal(false);
       fetchVenues();
     } catch (err) {
       console.error(err);
-      showToast('Failed to save venue.', 'error');
+      showToast('Gagal menyimpan venue.', 'error');
     } finally {
       setSaving(false);
     }
@@ -138,15 +138,15 @@ export default function Venues() {
   const handleDelete = (id: string, name: string) => {
     setConfirmModal({
       isOpen: true,
-      title: 'Delete Venue',
-      message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      title: 'Hapus Venue',
+      message: `Apakah Anda yakin ingin menghapus "${name}"? Tindakan ini tidak dapat dibatalkan.`,
       onConfirm: async () => {
         try {
           await deleteDoc(doc(db, 'venues', id));
-          showToast('Venue deleted.', 'success');
+          showToast('Venue berhasil dihapus.', 'success');
           fetchVenues();
         } catch {
-          showToast('Failed to delete venue.', 'error');
+          showToast('Gagal menghapus venue.', 'error');
         } finally {
           setConfirmModal(null);
         }
@@ -166,7 +166,7 @@ export default function Venues() {
   const handleSendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailForm.subject || !emailForm.message) {
-      showToast('Subject and message are required.', 'error');
+      showToast('Subjek dan pesan wajib diisi.', 'error');
       return;
     }
     setSendingEmail(true);
@@ -178,11 +178,11 @@ export default function Venues() {
           text: emailForm.message,
         }
       });
-      showToast('Email queued for sending!', 'success');
+      showToast('Email berhasil diantrekan untuk dikirim!', 'success');
       setShowEmailModal(false);
     } catch (err) {
       console.error(err);
-      showToast('Failed to trigger email.', 'error');
+      showToast('Gagal mengirim email.', 'error');
     } finally {
       setSendingEmail(false);
     }
@@ -244,15 +244,15 @@ export default function Venues() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Venue Management</h2>
-            <p className="text-slate-500 mt-1">Manage event venues, contacts, and brochures.</p>
+            <h2 className="text-2xl font-bold text-slate-900">Manajemen Venue</h2>
+            <p className="text-slate-500 mt-1">Kelola venue acara, kontak, dan brosur.</p>
           </div>
           <button
             onClick={handleOpenAdd}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Add Venue
+            Tambah Venue
           </button>
         </div>
 
@@ -262,7 +262,7 @@ export default function Venues() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by name, address, or PIC..."
+              placeholder="Cari nama, alamat, atau PIC..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -287,7 +287,7 @@ export default function Venues() {
               <Building2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Venues</p>
+              <p className="text-sm font-medium text-slate-500">Total Venue</p>
               <h3 className="text-2xl font-bold text-slate-900">{venues.length}</h3>
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function Venues() {
               <MapPin className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">Kabupaten Covered</p>
+              <p className="text-sm font-medium text-slate-500">Kabupaten Tercakup</p>
               <h3 className="text-2xl font-bold text-slate-900">{new Set(venues.map(v => v.kabupaten).filter(Boolean)).size}</h3>
             </div>
           </div>
@@ -305,7 +305,7 @@ export default function Venues() {
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm font-medium text-slate-500">With Brochure</p>
+              <p className="text-sm font-medium text-slate-500">Dengan Brosur</p>
               <h3 className="text-2xl font-bold text-slate-900">{venues.filter(v => v.brochureUrl).length}</h3>
             </div>
           </div>
@@ -322,7 +322,7 @@ export default function Venues() {
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => handleSort('name')}>
-                    Venue Name <SortIcon col="name" />
+                    Nama Venue <SortIcon col="name" />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100" onClick={() => handleSort('kabupaten')}>
                     Kabupaten <SortIcon col="kabupaten" />
@@ -331,12 +331,12 @@ export default function Venues() {
                     PIC <SortIcon col="picName" />
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Contact
+                    Kontak
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Brochure
+                    Brosur
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -377,7 +377,7 @@ export default function Venues() {
                     <td className="px-6 py-4 text-center">
                       {venue.brochureUrl
                         ? <a href={venue.brochureUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-xs font-medium">
-                            <ExternalLink className="w-3.5 h-3.5" /> View
+                            <ExternalLink className="w-3.5 h-3.5" /> Lihat
                           </a>
                         : <span className="text-xs text-slate-400">—</span>
                       }
@@ -385,14 +385,14 @@ export default function Venues() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-3">
                         {venue.picEmail && (
-                          <button onClick={() => handleOpenEmail(venue)} className="text-slate-400 hover:text-blue-600 transition-colors" title="Send Email">
+                          <button onClick={() => handleOpenEmail(venue)} className="text-slate-400 hover:text-blue-600 transition-colors" title="Kirim Email">
                             <Mail className="w-4 h-4" />
                           </button>
                         )}
-                        <button onClick={() => handleOpenEdit(venue)} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit">
+                        <button onClick={() => handleOpenEdit(venue)} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Edit Venue">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => handleDelete(venue.id, venue.name)} className="text-slate-400 hover:text-red-600 transition-colors" title="Delete">
+                        <button onClick={() => handleDelete(venue.id, venue.name)} className="text-slate-400 hover:text-red-600 transition-colors" title="Hapus Venue">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -402,7 +402,7 @@ export default function Venues() {
                 {paginated.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                      No venues found.
+                      Tidak ada venue ditemukan.
                     </td>
                   </tr>
                 )}
@@ -414,18 +414,18 @@ export default function Venues() {
               <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                 <div className="flex items-center space-x-4">
                   <p className="text-sm text-slate-700">
-                    Showing <span className="font-medium">{filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-                    <span className="font-medium">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> of{' '}
-                    <span className="font-medium">{filtered.length}</span> results
+                    Menampilkan <span className="font-medium">{filtered.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> hingga{' '}
+                    <span className="font-medium">{Math.min(currentPage * itemsPerPage, filtered.length)}</span> dari{' '}
+                    <span className="font-medium">{filtered.length}</span> hasil
                   </p>
                   <select
                     value={itemsPerPage}
                     onChange={e => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
                     className="border-slate-300 rounded-md text-sm focus:ring-indigo-500 focus:border-indigo-500"
                   >
-                    <option value={10}>10 per page</option>
-                    <option value={25}>25 per page</option>
-                    <option value={50}>50 per page</option>
+                    <option value={10}>10 per halaman</option>
+                    <option value={25}>25 per halaman</option>
+                    <option value={50}>50 per halaman</option>
                   </select>
                 </div>
                 <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
@@ -434,7 +434,7 @@ export default function Venues() {
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <span className="relative inline-flex items-center px-4 py-2 border border-slate-300 bg-white text-sm text-slate-700">
-                    Page {currentPage} of {totalPages || 1}
+                    Halaman {currentPage} dari {totalPages || 1}
                   </span>
                   <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0}
                     className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm text-slate-500 hover:bg-slate-50 disabled:opacity-50">
@@ -451,7 +451,7 @@ export default function Venues() {
           <div className="fixed inset-0 bg-slate-900/50 flex items-start justify-center p-4 z-50 overflow-y-auto">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8">
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h3 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Venue' : 'Add New Venue'}</h3>
+                <h3 className="text-lg font-bold text-slate-900">{editingId ? 'Edit Venue' : 'Tambah Venue Baru'}</h3>
                 <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600">
                   <X className="w-5 h-5" />
                 </button>
@@ -460,7 +460,7 @@ export default function Venues() {
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
                 {/* Venue Name */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Venue Name <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nama Venue <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     required
@@ -473,7 +473,7 @@ export default function Venues() {
 
                 {/* Venue Address (Google Maps) */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Venue Address</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Alamat Venue</label>
                   <VenueAutocomplete
                     value={form.address}
                     placeId={form.addressPlaceId}
@@ -495,7 +495,7 @@ export default function Venues() {
                     options={kabSelectOptions}
                     value={form.kabupaten ? { value: form.kabupaten, label: form.kabupaten } : null}
                     onChange={sel => setForm({ ...form, kabupaten: sel?.value || '' })}
-                    placeholder="Select Kabupaten"
+                    placeholder="Pilih Kabupaten"
                     isClearable
                     menuPosition="fixed"
                     className="text-sm"
@@ -504,14 +504,14 @@ export default function Venues() {
 
                 {/* PIC Name */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">PIC Name <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Nama PIC <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     required
                     value={form.picName}
                     onChange={e => setForm({ ...form, picName: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Contact person name"
+                    placeholder="Nama contact person"
                   />
                 </div>
 
@@ -528,7 +528,7 @@ export default function Venues() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Telepon</label>
                     <input
                       type="tel"
                       value={form.picPhone}
@@ -571,12 +571,12 @@ export default function Venues() {
 
                 {/* Brochure Upload */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Venue Brochure</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Brosur Venue</label>
                   {form.brochureUrl && !brochureFile && (
                     <div className="flex items-center gap-2 mb-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
                       <FileText className="w-4 h-4 text-indigo-500 flex-shrink-0" />
                       <a href={form.brochureUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-600 hover:underline truncate flex-1">
-                        View current brochure
+                        Lihat brosur saat ini
                       </a>
                       <button type="button" onClick={() => setForm({ ...form, brochureUrl: '' })} className="text-slate-400 hover:text-red-500">
                         <X className="w-3.5 h-3.5" />
@@ -590,7 +590,7 @@ export default function Venues() {
                     <Upload className="w-5 h-5 text-slate-400 mx-auto mb-1" />
                     {brochureFile
                       ? <p className="text-sm text-indigo-600 font-medium">{brochureFile.name}</p>
-                      : <p className="text-sm text-slate-500">Click to upload PDF or image</p>
+                      : <p className="text-sm text-slate-500">Klik untuk mengunggah PDF atau gambar</p>
                     }
                   </div>
                   <input
@@ -605,12 +605,12 @@ export default function Venues() {
                 <div className="flex justify-end space-x-3 pt-2">
                   <button type="button" onClick={() => setShowModal(false)}
                     className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
-                    Cancel
+                    Batal
                   </button>
                   <button type="submit" disabled={saving}
                     className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2">
                     {saving && <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-                    {editingId ? 'Save Changes' : 'Add Venue'}
+                    {editingId ? 'Simpan Perubahan' : 'Tambah Venue'}
                   </button>
                 </div>
               </form>
@@ -623,7 +623,7 @@ export default function Venues() {
           <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h3 className="text-lg font-bold text-slate-900">Email to PIC</h3>
+                <h3 className="text-lg font-bold text-slate-900">Email ke PIC</h3>
                 <button onClick={() => setShowEmailModal(false)} className="text-slate-400 hover:text-slate-600">
                   <X className="w-5 h-5" />
                 </button>
@@ -631,7 +631,7 @@ export default function Venues() {
 
               <form onSubmit={handleSendEmail} className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">To</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Kepada</label>
                   <input
                     type="text"
                     disabled
@@ -641,38 +641,38 @@ export default function Venues() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Subjek</label>
                   <input
                     type="text"
                     required
                     value={emailForm.subject}
                     onChange={e => setEmailForm({ ...emailForm, subject: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Email subject"
+                    placeholder="Subjek email"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Message</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Pesan</label>
                   <textarea
                     required
                     rows={6}
                     value={emailForm.message}
                     onChange={e => setEmailForm({ ...emailForm, message: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Write your message here..."
+                    placeholder="Tulis pesan Anda di sini..."
                   />
                 </div>
 
                 <div className="flex justify-end space-x-3 pt-2">
                   <button type="button" onClick={() => setShowEmailModal(false)}
                     className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">
-                    Cancel
+                    Batal
                   </button>
                   <button type="submit" disabled={sendingEmail}
                     className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 flex items-center gap-2">
                     {sendingEmail && <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />}
-                    Send Email
+                    Kirim Email
                   </button>
                 </div>
               </form>

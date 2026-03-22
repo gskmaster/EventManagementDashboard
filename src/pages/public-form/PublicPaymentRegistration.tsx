@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
-import { MapPin, CreditCard, CheckCircle2, Upload, User } from 'lucide-react';
+import { MapPin, CreditCard, CheckCircle2, Upload, User, Mail } from 'lucide-react';
 import Select from 'react-select';
 import { locations } from '../../data/locations';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
@@ -25,6 +25,7 @@ export default function PublicPaymentRegistration() {
     kecamatan: '',
     desa: '',
     transferpic: '',
+    email: '',
     amount: '',
     receiptFile: null as File | null,
   });
@@ -89,7 +90,7 @@ export default function PublicPaymentRegistration() {
     e.preventDefault();
     if (!projectId) return;
 
-    if (!formData.kecamatan || !formData.desa || !formData.transferpic || !formData.amount || !formData.receiptFile) {
+    if (!formData.kecamatan || !formData.desa || !formData.transferpic || !formData.email || !formData.amount || !formData.receiptFile) {
       setError('Silakan lengkapi semua data dan unggah bukti transfer.');
       return;
     }
@@ -128,6 +129,7 @@ export default function PublicPaymentRegistration() {
           status: 'approval',
           amount: formData.amount,
           transferpic: formData.transferpic,
+          email: formData.email,
           kecamatan: formData.kecamatan,
           desa: formData.desa,
           receiptUrl,
@@ -144,6 +146,7 @@ export default function PublicPaymentRegistration() {
         kecamatan: formData.kecamatan,
         desa: formData.desa,
         transferpic: formData.transferpic,
+        email: formData.email,
         amount: formData.amount,
         receiptUrl,
         status: 'pending',
@@ -153,7 +156,7 @@ export default function PublicPaymentRegistration() {
       await logConsent({
         formType: 'payment_registration',
         userName: formData.transferpic,
-        userEmail: '',
+        userEmail: formData.email,
         projectId,
       });
 
@@ -302,6 +305,25 @@ export default function PublicPaymentRegistration() {
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="Nama lengkap penyetor"
+                  />
+                </div>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Email Desa / Admin Desa <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                  <input
+                    type="email"
+                    name="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Alamat email aktif"
                   />
                 </div>
               </div>

@@ -98,21 +98,21 @@ export default function Users() {
     setFormError(null);
     
     if (!formData.displayName || !formData.email || !formData.phone || !formData.role) {
-      setFormError("Please fill all required fields.");
+      setFormError("Harap isi semua kolom yang wajib diisi.");
       return;
     }
 
     if (!isEditing) {
       if (!formData.password || !formData.confirmPassword) {
-        setFormError("Password fields are required for new users.");
+        setFormError("Kata sandi wajib diisi untuk pengguna baru.");
         return;
       }
       if (formData.password !== formData.confirmPassword) {
-        setFormError("Passwords do not match.");
+        setFormError("Kata sandi tidak cocok.");
         return;
       }
       if (formData.password.length < 6) {
-        setFormError("Password must be at least 6 characters long.");
+        setFormError("Kata sandi minimal 6 karakter.");
         return;
       }
     }
@@ -123,9 +123,11 @@ export default function Users() {
         await updateDoc(userRef, {
           displayName: formData.displayName,
           phone: formData.phone,
-          role: formData.role
+          role: formData.role,
+          updatedAt: new Date().toISOString(),
+          updatedBy: user?.email || ''
         });
-        showToast("User updated successfully.", "success");
+        showToast("Pengguna berhasil diperbarui.", "success");
       } else {
         // Create new user in Auth and Firestore
         const secondaryApp = initializeApp(firebaseConfig, "Secondary");
@@ -140,9 +142,10 @@ export default function Users() {
               displayName: formData.displayName,
               phone: formData.phone,
               role: formData.role,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              createdBy: user?.email || ''
             });
-            showToast("User created successfully.", "success");
+            showToast("Pengguna berhasil dibuat.", "success");
           } catch (firestoreError: any) {
             console.error("Firestore Error:", firestoreError);
             setFormError("User created in Auth but failed to save profile.");
@@ -177,11 +180,11 @@ export default function Users() {
     if (!deletingId) return;
     try {
       await deleteDoc(doc(db, 'users', deletingId));
-      showToast("User deleted successfully.", "success");
+      showToast("Pengguna berhasil dihapus.", "success");
       fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
-      showToast("Failed to delete user.", "error");
+      showToast("Gagal menghapus pengguna.", "error");
     } finally {
       setShowDeleteModal(false);
       setDeletingId(null);
@@ -209,7 +212,7 @@ export default function Users() {
       }
     } catch (error) {
       console.error('Reset password error:', error);
-      showToast('Failed to reset password.', 'error');
+      showToast('Gagal mereset kata sandi.', 'error');
     }
   };
 
@@ -284,15 +287,15 @@ export default function Users() {
         
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">User Management</h2>
-            <p className="text-slate-500 mt-1">Manage users, roles, and access permissions.</p>
+            <h2 className="text-2xl font-bold text-slate-900">Manajemen Pengguna</h2>
+            <p className="text-slate-500 mt-1">Kelola pengguna, peran, dan hak akses.</p>
           </div>
           <button
             onClick={handleOpenCreateModal}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
           >
             <Plus className="w-5 h-5 mr-2" />
-            New User
+            Pengguna Baru
           </button>
         </div>
 
@@ -301,7 +304,7 @@ export default function Users() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by name, email, or phone..."
+              placeholder="Cari nama, email, atau telepon..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -312,7 +315,7 @@ export default function Users() {
               options={roleOptions}
               value={filterRole}
               onChange={(val) => { setFilterRole(val); setCurrentPage(1); }}
-              placeholder="Filter Role"
+              placeholder="Filter Peran"
               isClearable
               className="text-sm"
             />
@@ -332,7 +335,7 @@ export default function Users() {
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort('displayName')}
                   >
-                    Full Name <SortIcon column="displayName" />
+                    Nama Lengkap <SortIcon column="displayName" />
                   </th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
@@ -344,15 +347,15 @@ export default function Users() {
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort('phone')}
                   >
-                    Phone <SortIcon column="phone" />
+                    Telepon <SortIcon column="phone" />
                   </th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort('role')}
                   >
-                    Role <SortIcon column="role" />
+                    Peran <SortIcon column="role" />
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-200">
@@ -409,7 +412,7 @@ export default function Users() {
                 {paginatedUsers.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                      No users found matching your filters.
+                      Tidak ada pengguna yang sesuai dengan filter.
                     </td>
                   </tr>
                 )}
@@ -419,7 +422,7 @@ export default function Users() {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
                 <div className="text-sm text-slate-500">
-                  Showing <span className="font-medium text-slate-900">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, sortedAndFilteredUsers.length)}</span> of <span className="font-medium text-slate-900">{sortedAndFilteredUsers.length}</span> results
+                  Menampilkan <span className="font-medium text-slate-900">{((currentPage - 1) * itemsPerPage) + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, sortedAndFilteredUsers.length)}</span> dari <span className="font-medium text-slate-900">{sortedAndFilteredUsers.length}</span> hasil
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -449,7 +452,7 @@ export default function Users() {
               <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => setShowModal(false)}></div>
               <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
                 <h3 className="text-lg font-bold text-slate-900 mb-4">
-                  {isEditing ? 'Edit User' : 'Create New User'}
+                  {isEditing ? 'Edit Pengguna' : 'Buat Pengguna Baru'}
                 </h3>
                 {formError && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
@@ -458,7 +461,7 @@ export default function Users() {
                 )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Nama Lengkap *</label>
                     <input
                       type="text"
                       required
@@ -477,10 +480,10 @@ export default function Users() {
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
                     />
-                    {isEditing && <p className="text-xs text-slate-500 mt-1">Email cannot be changed after creation.</p>}
+                    {isEditing && <p className="text-xs text-slate-500 mt-1">Email tidak dapat diubah setelah dibuat.</p>}
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Telepon *</label>
                     <input
                       type="tel"
                       required
@@ -490,7 +493,7 @@ export default function Users() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Role *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Peran *</label>
                     <select
                       required
                       value={formData.role}
@@ -505,7 +508,7 @@ export default function Users() {
                   {!isEditing && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Password *</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Kata Sandi *</label>
                         <input
                           type="password"
                           required={!isEditing}
@@ -515,7 +518,7 @@ export default function Users() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password *</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Konfirmasi Kata Sandi *</label>
                         <input
                           type="password"
                           required={!isEditing}
@@ -532,13 +535,13 @@ export default function Users() {
                       onClick={() => setShowModal(false)}
                       className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                     >
-                      Cancel
+                      Batal
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
                     >
-                      {isEditing ? 'Save Changes' : 'Create User'}
+                      {isEditing ? 'Simpan Perubahan' : 'Buat Pengguna'}
                     </button>
                   </div>
                 </form>
@@ -549,8 +552,8 @@ export default function Users() {
 
         <ConfirmModal
           isOpen={showDeleteModal}
-          title="Delete User"
-          message="Are you sure you want to delete this user? This action cannot be undone."
+          title="Hapus Pengguna"
+          message="Apakah Anda yakin ingin menghapus pengguna ini? Tindakan ini tidak dapat dibatalkan."
           confirmLabel="Delete"
           onConfirm={confirmDelete}
           onCancel={() => {

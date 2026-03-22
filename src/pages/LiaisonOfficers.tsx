@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, storage } from '../firebase';
+import { db, storage, auth } from '../firebase';
 import {
   collection,
   query,
@@ -147,21 +147,21 @@ export default function LiaisonOfficers() {
       if (editingOfficer) {
         await updateDoc(doc(db, 'liaison_officers', editingOfficer.id), data);
       } else {
-        await addDoc(collection(db, 'liaison_officers'), { ...data, createdAt: now });
+        await addDoc(collection(db, 'liaison_officers'), { ...data, createdAt: now, createdBy: auth.currentUser?.email || '' });
       }
 
       handleCloseModal();
       fetchData();
     } catch (error) {
       console.error('Error saving liaison officer:', error);
-      alert('Error saving liaison officer. Please check console for details.');
+      alert('Gagal menyimpan liaison officer. Silakan periksa konsol untuk detail.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this liaison officer?')) {
+    if (window.confirm('Apakah Anda yakin ingin menghapus liaison officer ini? Tindakan ini tidak dapat dibatalkan.')) {
       try {
         await deleteDoc(doc(db, 'liaison_officers', id));
         fetchData();
@@ -182,15 +182,15 @@ export default function LiaisonOfficers() {
       <div className="space-y-6">
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-1">Liaison Officer Management</h1>
-            <p className="text-slate-500">Manage liaison officers and project assignments.</p>
+            <h1 className="text-2xl font-bold text-slate-900 mb-1">Manajemen Liaison Officer</h1>
+            <p className="text-slate-500">Kelola liaison officer dan penugasan proyek.</p>
           </div>
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm font-medium"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add LO
+            Tambah LO
           </button>
         </div>
 
@@ -221,7 +221,7 @@ export default function LiaisonOfficers() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by name, email, or NIK..."
+              placeholder="Cari nama, email, atau NIK..."
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -234,16 +234,16 @@ export default function LiaisonOfficers() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
-              <p className="text-slate-500 text-sm">Loading liaison officers...</p>
+              <p className="text-slate-500 text-sm">Memuat liaison officer...</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                 <User className="w-8 h-8 text-slate-300" />
               </div>
-              <h3 className="text-lg font-medium text-slate-900">No liaison officers found</h3>
+              <h3 className="text-lg font-medium text-slate-900">Tidak ada liaison officer ditemukan</h3>
               <p className="text-slate-500 mt-1">
-                {searchTerm ? 'No results for your search.' : 'Get started by adding your first liaison officer.'}
+                {searchTerm ? 'Tidak ada hasil untuk pencarian Anda.' : 'Mulai dengan menambahkan liaison officer pertama Anda.'}
               </p>
             </div>
           ) : (
@@ -252,10 +252,10 @@ export default function LiaisonOfficers() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Liaison Officer</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bank</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Projects</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Proyek</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -288,7 +288,7 @@ export default function LiaisonOfficers() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">
-                          {officer.projectIds?.length || 0} Projects
+                          {officer.projectIds?.length || 0} Proyek
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -334,7 +334,7 @@ export default function LiaisonOfficers() {
           <div className="relative mx-auto max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <h2 className="text-xl font-bold text-slate-900">
-                {editingOfficer ? 'Edit Liaison Officer' : 'Register New Liaison Officer'}
+                {editingOfficer ? 'Edit Liaison Officer' : 'Daftarkan Liaison Officer Baru'}
               </h2>
               <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
                 <X className="w-6 h-6" />
@@ -346,10 +346,10 @@ export default function LiaisonOfficers() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                    <User className="w-3 h-3 mr-2" /> Personal Information
+                    <User className="w-3 h-3 mr-2" /> Informasi Pribadi
                   </h3>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name *</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Lengkap*</label>
                     <input required type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm font-semibold"
                       value={formData.fullName}
@@ -357,7 +357,7 @@ export default function LiaisonOfficers() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIK *</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">NIK*</label>
                     <input required type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm font-mono"
                       value={formData.nik}
@@ -365,16 +365,16 @@ export default function LiaisonOfficers() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Mobile Phone *</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nomor HP*</label>
                     <input required type="tel"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
                       value={formData.mobilePhone}
                       onChange={(e) => setFormData({ ...formData, mobilePhone: e.target.value })}
-                      placeholder="e.g. 08123456789"
+                      placeholder="contoh: 08123456789"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email *</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email*</label>
                     <input required type="email"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
                       value={formData.email}
@@ -386,24 +386,24 @@ export default function LiaisonOfficers() {
                 {/* KTP Upload */}
                 <div className="space-y-4">
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                    <FileText className="w-3 h-3 mr-2" /> KTP Document
+                    <FileText className="w-3 h-3 mr-2" /> Dokumen KTP
                   </h3>
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-200 border-dashed rounded-xl hover:border-teal-400 transition-colors group cursor-pointer">
                     <div className="space-y-1 text-center">
                       <FileText className="mx-auto h-12 w-12 text-slate-400 group-hover:text-teal-500 transition-colors" />
                       <div className="flex text-sm text-slate-600">
                         <label className="relative cursor-pointer rounded-md font-medium text-teal-600 hover:text-teal-500">
-                          <span>{ktpFile ? ktpFile.name : 'Upload KTP'}</span>
+                          <span>{ktpFile ? ktpFile.name : 'Unggah KTP'}</span>
                           <input type="file" className="sr-only" accept="image/*,application/pdf"
                             onChange={(e) => setKtpFile(e.target.files?.[0] || null)} />
                         </label>
                       </div>
-                      <p className="text-xs text-slate-500">PNG, JPG, PDF up to 5MB</p>
+                      <p className="text-xs text-slate-500">PNG, JPG, PDF hingga 5MB</p>
                     </div>
                   </div>
                   {editingOfficer?.ktpUrl && !ktpFile && (
                     <p className="text-xs text-emerald-600 flex items-center">
-                      <CheckCircle2 className="w-3 h-3 mr-1" /> Existing KTP file stored
+                      <CheckCircle2 className="w-3 h-3 mr-1" /> File KTP sudah tersimpan
                     </p>
                   )}
                 </div>
@@ -411,19 +411,19 @@ export default function LiaisonOfficers() {
 
               {/* Bank Info */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bank Account Information</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Informasi Rekening Bank</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Bank Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Bank</label>
                     <input type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm uppercase"
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                      placeholder="e.g. BCA, MANDIRI"
+                      placeholder="contoh: BCA, Mandiri"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Account Number</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nomor Rekening</label>
                     <input type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
                       value={formData.accountNumber}
@@ -431,21 +431,21 @@ export default function LiaisonOfficers() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Account Name</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nama Pemilik Rekening</label>
                     <input type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm font-semibold"
                       value={formData.accountName}
                       onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
-                      placeholder="As shown in bank book"
+                      placeholder="Sesuai buku tabungan"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Bank Branch</label>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Cabang Bank</label>
                     <input type="text"
                       className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
                       value={formData.bankBranch}
                       onChange={(e) => setFormData({ ...formData, bankBranch: e.target.value })}
-                      placeholder="Branch Name"
+                      placeholder="Nama Cabang"
                     />
                   </div>
                 </div>
@@ -453,7 +453,7 @@ export default function LiaisonOfficers() {
 
               {/* Project Assignment */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Project Assignment (Planning & On Going)</h3>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Penugasan Proyek (Perencanaan & Berjalan)</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2">
                   {projects.filter(p => p.status === 'Planning' || p.status === 'On Going').map(project => (
                     <div
@@ -479,7 +479,7 @@ export default function LiaisonOfficers() {
                     </div>
                   ))}
                   {projects.filter(p => p.status === 'Planning' || p.status === 'On Going').length === 0 && (
-                    <div className="col-span-2 text-center py-4 text-slate-400 text-sm italic">No active projects available</div>
+                    <div className="col-span-2 text-center py-4 text-slate-400 text-sm italic">Tidak ada proyek aktif</div>
                   )}
                 </div>
               </div>
@@ -487,11 +487,11 @@ export default function LiaisonOfficers() {
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <button type="button" onClick={handleCloseModal}
                   className="px-6 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 font-medium text-sm">
-                  Cancel
+                  Batal
                 </button>
                 <button type="submit" disabled={submitting}
                   className="inline-flex items-center px-6 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-semibold shadow-md disabled:bg-teal-400 text-sm">
-                  {submitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</>) : editingOfficer ? 'Update LO' : 'Register LO'}
+                  {submitting ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Menyimpan...</>) : editingOfficer ? 'Perbarui LO' : 'Daftarkan LO'}
                 </button>
               </div>
             </form>

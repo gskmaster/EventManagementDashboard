@@ -121,7 +121,7 @@ export default function Projects() {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProject.name || !newProject.startDate || !newProject.endDate || !newProject.pic || !newProject.kabupaten) {
-      showToast("Please fill all fields.", "error");
+      showToast("Harap isi semua kolom.", "error");
       return;
     }
     try {
@@ -132,13 +132,14 @@ export default function Projects() {
         venues: selectedVenues.map(v => v.label),
         venue: selectedVenues.map(v => v.label).join(', '),
         payments: "{}",
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        createdBy: user?.email || ''
       });
       await Promise.all([
         ...newProjectUsherIds.map(id => updateDoc(doc(db, 'ushers', id), { projectIds: arrayUnion(newRef.id) })),
         ...newProjectLOIds.map(id => updateDoc(doc(db, 'liaison_officers', id), { projectIds: arrayUnion(newRef.id) })),
       ]);
-      showToast("Project created successfully!", "success");
+      showToast("Proyek berhasil dibuat!", "success");
       setShowProjectModal(false);
       setNewProject({ name: '', startDate: '', endDate: '', pic: '', kabupaten: '', status: 'Planning' });
       setNewProjectVenueIds([]);
@@ -148,14 +149,14 @@ export default function Projects() {
       fetchUsherAndLOOptions();
     } catch (error) {
       console.error("Error creating project:", error);
-      showToast("Failed to create project.", "error");
+      showToast("Gagal membuat proyek.", "error");
     }
   };
 
   const handleEditProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editProject.name || !editProject.startDate || !editProject.endDate || !editProject.pic || !editProject.kabupaten) {
-      showToast("Please fill all required fields.", "error");
+      showToast("Harap isi semua kolom.", "error");
       return;
     }
     setIsEditSaving(true);
@@ -188,14 +189,14 @@ export default function Projects() {
         return Promise.resolve();
       }));
 
-      showToast("Project updated successfully!", "success");
+      showToast("Proyek berhasil diperbarui!", "success");
       setShowEditModal(false);
       setEditProject(null);
       fetchProjects();
       fetchUsherAndLOOptions();
     } catch (error) {
       console.error("Error updating project:", error);
-      showToast("Failed to update project.", "error");
+      showToast("Gagal memperbarui proyek.", "error");
     } finally {
       setIsEditSaving(false);
     }
@@ -267,14 +268,14 @@ export default function Projects() {
       });
       await Promise.all(updatePromises);
       
-      showToast("Bulk update successful.", "success");
+      showToast("Perubahan massal berhasil.", "success");
       setShowBulkModal(false);
       setSelectedRows(new Set());
       setBulkStatus('');
       fetchProjects();
     } catch (error) {
       console.error("Error in bulk update:", error);
-      showToast("Failed to bulk update.", "error");
+      showToast("Gagal melakukan perubahan massal.", "error");
     }
   };
 
@@ -322,15 +323,15 @@ export default function Projects() {
         
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Project Management</h2>
-            <p className="text-slate-500 mt-1">Manage event projects, timelines, and statuses.</p>
+            <h2 className="text-2xl font-bold text-slate-900">Manajemen Proyek</h2>
+            <p className="text-slate-500 mt-1">Kelola proyek acara, jadwal, dan status.</p>
           </div>
           <button
             onClick={() => setShowProjectModal(true)}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
           >
             <Plus className="w-5 h-5 mr-2" />
-            New Project
+            Proyek Baru
           </button>
         </div>
 
@@ -339,7 +340,7 @@ export default function Projects() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search projects by name, PIC, or kabupaten..."
+              placeholder="Cari proyek berdasarkan nama, PIC, atau kabupaten..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -350,13 +351,13 @@ export default function Projects() {
         {selectedRows.size > 0 && (
           <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 flex items-center justify-between">
             <span className="text-indigo-700 font-medium">
-              {selectedRows.size} row(s) selected
+              {selectedRows.size} baris dipilih
             </span>
             <button
               onClick={() => setShowBulkModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              Bulk Update Status
+              Ubah Status Massal
             </button>
           </div>
         )}
@@ -382,7 +383,7 @@ export default function Projects() {
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort('name')}
                   >
-                    Project Name <SortIcon column="name" />
+                    Nama Proyek <SortIcon column="name" />
                   </th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
@@ -394,7 +395,7 @@ export default function Projects() {
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                     onClick={() => handleSort('startDate')}
                   >
-                    Dates <SortIcon column="startDate" />
+                    Tanggal <SortIcon column="startDate" />
                   </th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
@@ -409,7 +410,7 @@ export default function Projects() {
                     Status <SortIcon column="status" />
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Action
+                    Aksi
                   </th>
                 </tr>
               </thead>
@@ -494,7 +495,7 @@ export default function Projects() {
                 {paginatedProjects.length === 0 && (
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
-                      No projects found.
+                      Tidak ada proyek ditemukan.
                     </td>
                   </tr>
                 )}
@@ -504,7 +505,7 @@ export default function Projects() {
             {totalPages > 1 && (
               <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
                 <div className="text-sm text-slate-500">
-                  Showing <span className="font-medium text-slate-900">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, sortedAndFilteredProjects.length)}</span> of <span className="font-medium text-slate-900">{sortedAndFilteredProjects.length}</span> results
+                  Menampilkan <span className="font-medium text-slate-900">{((currentPage - 1) * itemsPerPage) + 1}</span> hingga <span className="font-medium text-slate-900">{Math.min(currentPage * itemsPerPage, sortedAndFilteredProjects.length)}</span> dari <span className="font-medium text-slate-900">{sortedAndFilteredProjects.length}</span> hasil
                 </div>
                 <div className="flex space-x-2">
                   <button
@@ -533,10 +534,10 @@ export default function Projects() {
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
               <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => setShowProjectModal(false)}></div>
               <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Create New Project</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Buat Proyek Baru</h3>
                 <form onSubmit={handleCreateProject} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Project Name</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Nama Proyek</label>
                     <input
                       type="text"
                       required
@@ -547,7 +548,7 @@ export default function Projects() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Mulai</label>
                       <input
                         type="date"
                         required
@@ -557,7 +558,7 @@ export default function Projects() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Selesai</label>
                       <input
                         type="date"
                         required
@@ -568,12 +569,12 @@ export default function Projects() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Event Venue</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Lokasi Acara</label>
                     <Select
                       options={venueOptions}
                       value={venueOptions.filter(o => newProjectVenueIds.includes(o.value))}
                       onChange={(sel) => setNewProjectVenueIds((sel as any[]).map(s => s.value))}
-                      placeholder="Select venue(s)..."
+                      placeholder="Pilih lokasi..."
                       isMulti
                       menuPosition="fixed"
                       className="react-select-container"
@@ -581,7 +582,7 @@ export default function Projects() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Project PIC (Name)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">PIC Proyek (Nama)</label>
                     <input
                       type="text"
                       required
@@ -622,7 +623,7 @@ export default function Projects() {
                   {/* Usher Assignment */}
                   {allUshers.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Ushers</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Tugaskan Usher</label>
                       <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                         {allUshers.map(u => (
                           <label key={u.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
@@ -644,7 +645,7 @@ export default function Projects() {
                   {/* LO Assignment */}
                   {allLOs.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Liaison Officers</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Tugaskan Liaison Officer</label>
                       <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                         {allLOs.map(lo => (
                           <label key={lo.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
@@ -669,13 +670,13 @@ export default function Projects() {
                       onClick={() => { setShowProjectModal(false); setNewProjectUsherIds([]); setNewProjectLOIds([]); }}
                       className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                     >
-                      Cancel
+                      Batal
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
                     >
-                      Create Project
+                      Buat Proyek
                     </button>
                   </div>
                 </form>
@@ -690,10 +691,10 @@ export default function Projects() {
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
               <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => setShowEditModal(false)}></div>
               <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Edit Project</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Edit Proyek</h3>
                 <form onSubmit={handleEditProject} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Project Name <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Nama Proyek <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       required
@@ -704,7 +705,7 @@ export default function Projects() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Start Date <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Mulai <span className="text-red-500">*</span></label>
                       <input
                         type="date"
                         required
@@ -714,7 +715,7 @@ export default function Projects() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">End Date <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Tanggal Selesai <span className="text-red-500">*</span></label>
                       <input
                         type="date"
                         required
@@ -725,12 +726,12 @@ export default function Projects() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Event Venue</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Lokasi Acara</label>
                     <Select
                       options={venueOptions}
                       value={venueOptions.filter(o => editProjectVenueIds.includes(o.value))}
                       onChange={(sel) => setEditProjectVenueIds((sel as any[]).map(s => s.value))}
-                      placeholder="Select venue(s)..."
+                      placeholder="Pilih lokasi..."
                       isMulti
                       menuPosition="fixed"
                       className="react-select-container"
@@ -738,7 +739,7 @@ export default function Projects() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Project PIC (Name) <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">PIC Proyek (Nama) <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       required
@@ -777,7 +778,7 @@ export default function Projects() {
                   {/* Usher Assignment */}
                   {allUshers.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Ushers</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Tugaskan Usher</label>
                       <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                         {allUshers.map(u => (
                           <label key={u.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
@@ -799,7 +800,7 @@ export default function Projects() {
                   {/* LO Assignment */}
                   {allLOs.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Assign Liaison Officers</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">Tugaskan Liaison Officer</label>
                       <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                         {allLOs.map(lo => (
                           <label key={lo.id} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
@@ -824,14 +825,14 @@ export default function Projects() {
                       onClick={() => setShowEditModal(false)}
                       className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                     >
-                      Cancel
+                      Batal
                     </button>
                     <button
                       type="submit"
                       disabled={isEditSaving}
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                     >
-                      {isEditSaving ? 'Saving...' : 'Save Changes'}
+                      {isEditSaving ? 'Mohon tunggu...' : 'Simpan Perubahan'}
                     </button>
                   </div>
                 </form>
@@ -846,18 +847,18 @@ export default function Projects() {
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
               <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => setShowBulkModal(false)}></div>
               <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Bulk Update Status ({selectedRows.size} selected)</h3>
+                <h3 className="text-lg font-bold text-slate-900 mb-4">Ubah Status Massal ({selectedRows.size} dipilih)</h3>
                 
                 <form onSubmit={handleBulkUpdate} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">New Status</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status Baru</label>
                     <select
                       required
                       value={bulkStatus}
                       onChange={(e) => setBulkStatus(e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                      <option value="">Select Status</option>
+                      <option value="">Pilih Status</option>
                       {statusOptions.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
@@ -870,13 +871,13 @@ export default function Projects() {
                       onClick={() => setShowBulkModal(false)}
                       className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                     >
-                      Cancel
+                      Batal
                     </button>
                     <button
                       type="submit"
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 flex items-center"
                     >
-                      Apply Bulk Update
+                      Terapkan Perubahan
                     </button>
                   </div>
                 </form>

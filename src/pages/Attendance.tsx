@@ -6,7 +6,7 @@ import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
 import { locations } from '../data/locations';
-import { ArrowLeft, Calendar, MapPin, User, Check, X, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, UserCheck, UserX, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Check, X, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, UserCheck, UserX, Clock, QrCode } from 'lucide-react';
 
 export default function Attendance() {
   const { user, profile } = useAuth();
@@ -30,6 +30,9 @@ export default function Attendance() {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<'registered' | 'present' | 'absent' | ''>('');
+
+  // QR Modal State
+  const [qrPerson, setQrPerson] = useState<any | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -111,7 +114,7 @@ export default function Attendance() {
       setSelectedRows(new Set());
     } catch (error) {
       console.error("Error fetching persons:", error);
-      showToast("Failed to fetch participants.", "error");
+      showToast("Gagal memuat data peserta.", "error");
     } finally {
       setLoading(false);
     }
@@ -124,10 +127,10 @@ export default function Attendance() {
       
       // Update local state
       setPersons(persons.map(p => p.id === id ? { ...p, attendanceStatus: status } : p));
-      showToast(`Attendance marked as ${status}.`, "success");
+      showToast(`Kehadiran ditandai sebagai ${status}.`, "success");
     } catch (error) {
       console.error("Error updating attendance:", error);
-      showToast("Failed to update attendance.", "error");
+      showToast("Gagal memperbarui kehadiran.", "error");
     }
   };
 
@@ -162,13 +165,13 @@ export default function Attendance() {
       // Update local state
       setPersons(persons.map(p => selectedRows.has(p.id) ? { ...p, attendanceStatus: bulkStatus } : p));
       
-      showToast(`Successfully updated ${selectedRows.size} participants.`, "success");
+      showToast(`Berhasil memperbarui ${selectedRows.size} peserta.`, "success");
       setShowBulkModal(false);
       setSelectedRows(new Set());
       setBulkStatus('');
     } catch (error) {
       console.error("Error updating bulk attendance:", error);
-      showToast("Failed to update attendance.", "error");
+      showToast("Gagal memperbarui kehadiran.", "error");
     }
   };
 
@@ -219,9 +222,9 @@ export default function Attendance() {
   );
 
   const statusOptions = [
-    { value: 'registered', label: 'Registered' },
-    { value: 'present', label: 'Present' },
-    { value: 'absent', label: 'Absent' }
+    { value: 'registered', label: 'Terdaftar' },
+    { value: 'present', label: 'Hadir' },
+    { value: 'absent', label: 'Absen' }
   ];
 
   const totalParticipants = sortedAndFilteredPersons.length;
@@ -256,8 +259,8 @@ export default function Attendance() {
           <>
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Event Reporting (Attendance)</h2>
-                <p className="text-slate-500 mt-1">Select an ongoing project to manage participant check-ins.</p>
+                <h2 className="text-2xl font-bold text-slate-900">Absensi Peserta</h2>
+                <p className="text-slate-500 mt-1">Pilih proyek yang sedang berjalan untuk mengelola absensi peserta.</p>
               </div>
             </div>
 
@@ -269,7 +272,7 @@ export default function Attendance() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {onGoingProjects.length === 0 ? (
                   <div className="col-span-full text-center py-12 bg-white rounded-xl border border-slate-200">
-                    <p className="text-slate-500">No ongoing projects found.</p>
+                    <p className="text-slate-500">Tidak ada proyek yang sedang berjalan.</p>
                   </div>
                 ) : (
                   onGoingProjects.map((project) => (
@@ -312,7 +315,7 @@ export default function Attendance() {
                 className="flex items-center text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to Projects
+                Kembali ke Proyek
               </button>
             </div>
 
@@ -331,7 +334,7 @@ export default function Attendance() {
                     </div>
                   </div>
                   <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 inline-flex items-center">
-                    <span className="text-sm font-medium text-indigo-800 mr-2">Registration URL:</span>
+                    <span className="text-sm font-medium text-indigo-800 mr-2">URL Pendaftaran:</span>
                     <a 
                       href={`${window.location.origin}/register/${selectedProject.id}`} 
                       target="_blank" 
@@ -349,15 +352,15 @@ export default function Attendance() {
                   </div>
                   <div className="text-center px-4 py-2 bg-blue-50 rounded-lg border border-blue-100">
                     <div className="text-2xl font-bold text-blue-700">{totalRegistered}</div>
-                    <div className="text-xs font-medium text-blue-600 uppercase tracking-wider">Registered</div>
+                    <div className="text-xs font-medium text-blue-600 uppercase tracking-wider">Terdaftar</div>
                   </div>
                   <div className="text-center px-4 py-2 bg-emerald-50 rounded-lg border border-emerald-100">
                     <div className="text-2xl font-bold text-emerald-700">{totalPresent}</div>
-                    <div className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Present</div>
+                    <div className="text-xs font-medium text-emerald-600 uppercase tracking-wider">Hadir</div>
                   </div>
                   <div className="text-center px-4 py-2 bg-rose-50 rounded-lg border border-rose-100">
                     <div className="text-2xl font-bold text-rose-700">{totalAbsent}</div>
-                    <div className="text-xs font-medium text-rose-600 uppercase tracking-wider">Absent</div>
+                    <div className="text-xs font-medium text-rose-600 uppercase tracking-wider">Absen</div>
                   </div>
                 </div>
               </div>
@@ -369,7 +372,7 @@ export default function Attendance() {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
                   <input
                     type="text"
-                    placeholder="Search by name, NIK, or email..."
+                    placeholder="Cari nama, NIK, atau email..."
                     value={searchTerm}
                     onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                     className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -412,13 +415,13 @@ export default function Attendance() {
             {selectedRows.size > 0 && (
               <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 flex items-center justify-between">
                 <span className="text-indigo-700 font-medium">
-                  {selectedRows.size} row(s) selected
+                  {selectedRows.size} baris dipilih
                 </span>
                 <button
                   onClick={() => setShowBulkModal(true)}
                   className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
                 >
-                  Bulk Update
+                  Ubah Massal
                 </button>
               </div>
             )}
@@ -439,13 +442,13 @@ export default function Attendance() {
                       className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort('fullName')}
                     >
-                      Participant <SortIcon column="fullName" />
+                      Peserta <SortIcon column="fullName" />
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort('mobilePhone')}
                     >
-                      Contact <SortIcon column="mobilePhone" />
+                      Kontak <SortIcon column="mobilePhone" />
                     </th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
@@ -471,7 +474,7 @@ export default function Attendance() {
                     >
                       Status <SortIcon column="attendanceStatus" />
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
@@ -508,17 +511,25 @@ export default function Attendance() {
                           person.attendanceStatus === 'absent' ? 'bg-red-100 text-red-800' :
                           'bg-blue-100 text-blue-800'
                         }`}>
-                          {person.attendanceStatus ? person.attendanceStatus.charAt(0).toUpperCase() + person.attendanceStatus.slice(1) : 'Registered'}
+                          {person.attendanceStatus ? person.attendanceStatus.charAt(0).toUpperCase() + person.attendanceStatus.slice(1) : 'Terdaftar'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
+                          {person.qrCodeUrl && (
+                            <button
+                              onClick={() => setQrPerson(person)}
+                              className="inline-flex items-center px-3 py-1.5 border border-slate-300 text-xs font-semibold rounded-lg shadow-sm text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                            >
+                              <QrCode className="w-4 h-4 mr-1.5 text-slate-500" /> QR
+                            </button>
+                          )}
                           {person.attendanceStatus !== 'present' && (
                             <button 
                               onClick={() => updateAttendance(person.id, 'present')}
                               className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                             >
-                              <UserCheck className="w-4 h-4 mr-1.5" /> Check In
+                              <UserCheck className="w-4 h-4 mr-1.5" /> Check-in
                             </button>
                           )}
                           {person.attendanceStatus !== 'absent' && (
@@ -526,7 +537,7 @@ export default function Attendance() {
                               onClick={() => updateAttendance(person.id, 'absent')}
                               className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-semibold rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
                             >
-                              <UserX className="w-4 h-4 mr-1.5" /> Absent
+                              <UserX className="w-4 h-4 mr-1.5" /> Absen
                             </button>
                           )}
                           {person.attendanceStatus !== 'registered' && (
@@ -544,7 +555,7 @@ export default function Attendance() {
                   {paginatedPersons.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                        No participants found matching your criteria.
+                        Tidak ada peserta yang sesuai dengan filter.
                       </td>
                     </tr>
                   )}
@@ -557,7 +568,7 @@ export default function Attendance() {
                   <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm text-slate-700">
-                        Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, sortedAndFilteredPersons.length)}</span> of <span className="font-medium">{sortedAndFilteredPersons.length}</span> results
+                        Menampilkan <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> hingga <span className="font-medium">{Math.min(currentPage * itemsPerPage, sortedAndFilteredPersons.length)}</span> dari <span className="font-medium">{sortedAndFilteredPersons.length}</span> hasil
                       </p>
                     </div>
                     <div>
@@ -567,7 +578,7 @@ export default function Attendance() {
                           disabled={currentPage === 1}
                           className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="sr-only">Previous</span>
+                          <span className="sr-only">Sebelumnya</span>
                           <ChevronLeft className="h-5 w-5" aria-hidden="true" />
                         </button>
                         {[...Array(totalPages)].map((_, i) => (
@@ -588,7 +599,7 @@ export default function Attendance() {
                           disabled={currentPage === totalPages}
                           className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-slate-300 bg-white text-sm font-medium text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <span className="sr-only">Next</span>
+                          <span className="sr-only">Berikutnya</span>
                           <ChevronRight className="h-5 w-5" aria-hidden="true" />
                         </button>
                       </nav>
@@ -600,6 +611,40 @@ export default function Attendance() {
           </>
         )}
 
+        {/* QR Code Modal */}
+        {qrPerson && (
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+              <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => setQrPerson(null)}></div>
+              <div className="relative inline-block w-full max-w-sm p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-slate-900">QR Code Peserta</h3>
+                  <button onClick={() => setQrPerson(null)} className="text-slate-400 hover:text-slate-500">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-slate-900 mb-1">{qrPerson.fullName}</p>
+                  <p className="text-xs text-slate-500 mb-4">NIK: {qrPerson.nik}</p>
+                  <img
+                    src={qrPerson.qrCodeUrl}
+                    alt={`QR Code ${qrPerson.fullName}`}
+                    className="mx-auto w-56 h-56 object-contain border border-slate-200 rounded-lg"
+                  />
+                  <a
+                    href={qrPerson.qrCodeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center text-xs text-indigo-600 hover:text-indigo-800"
+                  >
+                    Buka gambar
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Bulk Update Modal */}
         {showBulkModal && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -608,7 +653,7 @@ export default function Attendance() {
               <div className="relative inline-block w-full max-w-md p-6 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-bold text-slate-900">
-                    Bulk Update Attendance
+                    Ubah Absensi Massal
                   </h3>
                   <button onClick={() => setShowBulkModal(false)} className="text-slate-400 hover:text-slate-500">
                     <X className="w-5 h-5" />
@@ -617,17 +662,17 @@ export default function Attendance() {
                 
                 <form onSubmit={handleBulkUpdate} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Attendance Status</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status Kehadiran</label>
                     <select
                       required
                       value={bulkStatus}
                       onChange={(e) => setBulkStatus(e.target.value as any)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     >
-                      <option value="">Select status...</option>
-                      <option value="registered">Registered</option>
-                      <option value="present">Present</option>
-                      <option value="absent">Absent</option>
+                      <option value="">Pilih status...</option>
+                      <option value="registered">Terdaftar</option>
+                      <option value="present">Hadir</option>
+                      <option value="absent">Absen</option>
                     </select>
                   </div>
                   
@@ -637,14 +682,14 @@ export default function Attendance() {
                       onClick={() => setShowBulkModal(false)}
                       className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                     >
-                      Cancel
+                      Batal
                     </button>
                     <button
                       type="submit"
                       disabled={!bulkStatus}
                       className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Update {selectedRows.size} Participants
+                      Ubah {selectedRows.size} Peserta
                     </button>
                   </div>
                 </form>

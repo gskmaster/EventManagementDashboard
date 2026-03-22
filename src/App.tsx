@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import Login from './pages/Login';
+import LOLogin from './pages/LOLogin';
+import LODashboard from './pages/lo/LODashboard';
 import Dashboard from './pages/Dashboard';
 import Registration from './pages/Registration';
 import Payments from './pages/Payments';
@@ -26,6 +28,9 @@ import LegalDetail from './pages/LegalDetail';
 import LegalTerms from './pages/LegalTerms';
 import CertificateManagement from './pages/CertificateManagement';
 import CertificateDetail from './pages/CertificateDetail';
+import EmailTemplates from './pages/EmailTemplates';
+import NotFound from './pages/NotFound';
+import ErrorPage from './pages/ErrorPage';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) => {
   const { user, profile, loading } = useAuth();
@@ -49,6 +54,28 @@ const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
+const LOProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, profile, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/lo-login" replace />;
+  }
+
+  if (profile && !['lo', 'usher', 'event_manager', 'admin'].includes(profile.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -56,8 +83,17 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/lo-login" element={<LOLogin />} />
+            <Route
+              path="/lo-dashboard"
+              element={
+                <LOProtectedRoute>
+                  <LODashboard />
+                </LOProtectedRoute>
+              }
+            />
             <Route path="/register/:projectId" element={<PublicRegistration />} />
-            <Route path="/register-speaker/:projectId" element={<PublicSpeakerRegistration />} />
+            <Route path="/register-speaker" element={<PublicSpeakerRegistration />} />
             <Route path="/register-usher" element={<PublicUsherRegistration />} />
             <Route path="/register-lo" element={<PublicLORegistration />} />
             <Route path="/pay-receipt/:projectId" element={<PublicPaymentRegistration />} />
@@ -206,6 +242,16 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/email-templates"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <EmailTemplates />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/error" element={<ErrorPage />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

@@ -6,7 +6,7 @@ import { auth, db } from '../firebase';
 interface UserProfile {
   uid: string;
   email: string;
-  role: 'admin' | 'event_manager' | 'finance' | 'lo' | 'participant' | 'tax_admin' | 'dpo';
+  role: 'admin' | 'event_manager' | 'finance' | 'lo' | 'participant' | 'tax_admin' | 'dpo' | 'usher';
   displayName?: string;
   createdAt: string;
 }
