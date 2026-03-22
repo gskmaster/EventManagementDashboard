@@ -138,3 +138,31 @@ exports.verifyAuditIntegrity = functions.https.onCall(async (data, context) => {
     records,
   };
 });
+
+/**
+ * checkUniqueUser — HTTPS callable (public, no auth required)
+ * 
+ * Securely checks if an email or phone number already exists in
+ * the specified collection without exposing the collection data.
+ */
+exports.checkUniqueUser = functions.https.onCall(async (data, context) => {
+  const { collectionName, email, mobilePhone } = data;
+  
+  if (!collectionName || !['ushers', 'liaison_officers'].includes(collectionName)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid collection name.');
+  }
+
+  // Check email
+  if (email && email.trim() !== '') {
+    const emailSnap = await db.collection(collectionName).where('email', '==', email.trim()).limit(1).get();
+    if (!emailSnap.empty) return { isUnique: false, type: 'email' };
+  }
+
+  // Check phone
+  if (mobilePhone && mobilePhone.trim() !== '') {
+    const phoneSnap = await db.collection(collectionName).where('mobilePhone', '==', mobilePhone.trim()).limit(1).get();
+    if (!phoneSnap.empty) return { isUnique: false, type: 'phone' };
+  }
+
+  return { isUnique: true };
+});

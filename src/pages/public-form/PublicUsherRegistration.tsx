@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, storage, functions } from '../../firebase';
 import { CheckCircle2, FileText, Loader2, UserCheck } from 'lucide-react';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
 import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
@@ -32,6 +33,25 @@ export default function PublicUsherRegistration() {
     setError('');
 
     try {
+      // Periksa email unik menggunakan Cloud Function secara aman
+      const checkUniqueUser = httpsCallable<{collectionName: string, email?: string, mobilePhone?: string}, {isUnique: boolean, type?: string}>(functions, 'checkUniqueUser');
+      const uniqueRes = await checkUniqueUser({
+        collectionName: 'ushers',
+        email: formData.email.trim(),
+        mobilePhone: formData.mobilePhone.trim(),
+      });
+      
+      const { isUnique, type } = uniqueRes.data;
+      if (!isUnique) {
+        if (type === 'email') {
+          setError('Email ini sudah terdaftar. Silakan gunakan alamat email lain.');
+        } else {
+          setError('Nomor handphone ini sudah terdaftar. Silakan gunakan nomor telepon lain.');
+        }
+        setSubmitting(false);
+        return;
+      }
+
       let ktpUrl = '';
       if (ktpFile) {
         const storageRef = ref(storage, `ktp_ushers/${Date.now()}_${ktpFile.name}`);
