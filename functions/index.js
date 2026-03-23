@@ -243,6 +243,8 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
 
     // Header words to ignore
     const headerWords = ['PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA'];
+    // KTP Label words that are NOT names
+    const labelWords = ['NIK', 'NAMA', 'TEMPAT', 'LAHIR', 'KELAMIN', 'ALAMAT', 'RT/RW', 'KEL/DESA', 'KECAMATAN', 'AGAMA', 'STATUS', 'PERKAWINAN', 'PEKERJAAN', 'KEWARGANEGARAAN', 'BERLAKU', 'HINGGA', 'GOL DARAH'];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toUpperCase();
@@ -253,32 +255,45 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
       // Skip headers
       if (headerWords.some(hw => line.includes(hw))) continue;
 
-      // Match "NAMA" or similar
-      if (line.includes('NAMA') || (nikLineIndex !== -1 && i > nikLineIndex && fullName === '')) {
+      // Match "NAMA" or similar, or just any line after NIK if we still don't have a name
+      // But ensure it's NOT just another label
+      const isLabelOnly = labelWords.some(lw => line === lw || line.startsWith(lw + ' ') || line.startsWith(lw + ':'));
+      
+      if (line.includes('NAMA') || (nikLineIndex !== -1 && i > nikLineIndex && fullName === '' && !isLabelOnly)) {
         let nameCandidate = '';
         
         // If line contains "NAMA", try to take what's after it
         if (line.includes('NAMA')) {
-          const afterNama = line.split('NAMA')[1] || '';
-          nameCandidate = afterNama.replace(/^[^A-Z]+/, '').trim();
-        } 
+          const parts = line.split('NAMA');
+          nameCandidate = parts[parts.length - 1].trim();
+        } else if (!isLabelOnly) {
+          nameCandidate = line;
+        }
         
-        // If still empty or very short, take the next line IF it doesn't contain NAMA/NIK/Header
-        if (nameCandidate.length < 3 && i + 1 < lines.length) {
+        // Clean up the candidate
+        nameCandidate = nameCandidate
+          .replace(/[:]/g, '')
+          .replace(/[^A-Z\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        // If candidate is a known label or too short, try next line if it's not a label
+        if ((labelWords.some(lw => nameCandidate === lw) || nameCandidate.length < 3) && i + 1 < lines.length) {
           const nextLine = lines[i+1].toUpperCase();
-          if (!nextLine.includes('NIK') && !nextLine.includes('NAMA') && !headerWords.some(hw => nextLine.includes(hw))) {
-            nameCandidate = lines[i+1].trim();
+          const nextIsLabel = labelWords.some(lw => nextLine.includes(lw));
+          const nextIsHeader = headerWords.some(hw => nextLine.includes(hw));
+          
+          if (!nextIsLabel && !nextIsHeader && !nextLine.includes(nik)) {
+            nameCandidate = lines[i+1].toUpperCase()
+              .replace(/[^A-Z\s]/g, ' ')
+              .replace(/\s+/g, ' ')
+              .trim();
           }
         }
 
-        if (nameCandidate) {
-          fullName = nameCandidate
-            .replace(/[:]/g, '')
-            .replace(/[^A-Za-z\s]/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          if (fullName.length > 2) break;
+        if (nameCandidate && nameCandidate.length >= 3 && !labelWords.includes(nameCandidate)) {
+          fullName = nameCandidate;
+          break; // Found it!
         }
       }
     }
