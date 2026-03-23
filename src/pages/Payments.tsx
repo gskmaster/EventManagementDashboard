@@ -46,6 +46,7 @@ export default function Payments() {
   const [editReceiptFile, setEditReceiptFile] = useState<File | null>(null);
   const [editReceiptUrl, setEditReceiptUrl] = useState('');
   const [editTransferPic, setEditTransferPic] = useState('');
+  const [editStatus, setEditStatus] = useState<'yes' | 'no' | 'approval'>('no');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [receiptPopupUrl, setReceiptPopupUrl] = useState<string | null>(null);
@@ -174,6 +175,7 @@ export default function Payments() {
     setEditNotes(details.notes || '');
     setEditReceiptUrl(details.receiptUrl || '');
     setEditTransferPic(details.transferpic || '');
+    setEditStatus((details.status as 'yes' | 'no' | 'approval') || 'no');
     setEditReceiptFile(null);
     setShowEditModal(true);
   };
@@ -285,6 +287,7 @@ export default function Payments() {
           transferpic: editTransferPic,
           notes: editNotes,
           receiptUrl: finalReceiptUrl,
+          status: editStatus,
           kecamatan: editingInst.kecamatan || currentData.kecamatan || '',
           desa: editingInst.desa || currentData.desa || '',
         }
@@ -1046,6 +1049,27 @@ export default function Payments() {
                       placeholder="Enter notes"
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status Pembayaran</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { value: 'yes',      label: 'Lunas',    color: 'bg-emerald-50 border-emerald-300 text-emerald-700 ring-emerald-400' },
+                        { value: 'approval', label: 'Approval', color: 'bg-amber-50 border-amber-300 text-amber-700 ring-amber-400' },
+                        { value: 'no',       label: 'Belum',    color: 'bg-slate-50 border-slate-300 text-slate-600 ring-slate-400' },
+                      ] as const).map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setEditStatus(opt.value)}
+                          className={`py-2 rounded-lg border text-sm font-semibold transition-all ${opt.color} ${
+                            editStatus === opt.value ? 'ring-2 shadow-sm' : 'opacity-50 hover:opacity-80'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Transfer Receipt</label>
