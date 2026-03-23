@@ -58,10 +58,11 @@ jobs:
             sudo docker stop ${{ env.SERVICE_NAME }} || true
             sudo docker rm ${{ env.SERVICE_NAME }} || true
             sudo docker run -d --name ${{ env.SERVICE_NAME }} --restart always -p 8080:8080 gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
-            sudo apt-get install -y nginx
+            sudo apt-get install -y nginx certbot python3-certbot-nginx
             sudo tee /etc/nginx/sites-available/default > /dev/null <<'EOF'
             server {
                 listen 80;
+                server_name eveniser.gsk.co.id;
                 location / {
                     proxy_pass http://localhost:8080;
                     proxy_set_header Host $host;
@@ -70,3 +71,4 @@ jobs:
             }
             EOF
             sudo systemctl restart nginx
+            sudo certbot --nginx -d eveniser.gsk.co.id --non-interactive --agree-tos -m admin@gsk.co.id --keep-until-expiring
