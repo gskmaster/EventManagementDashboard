@@ -1056,8 +1056,24 @@ export default function Payments() {
                             Selected file: <span className="font-medium">{editReceiptFile.name}</span>
                           </div>
                         ) : editReceiptUrl ? (
-                          <div className="mb-4">
-                            <img src={editReceiptUrl} alt="Receipt Preview" className="mx-auto h-32 object-contain rounded-md" />
+                          <div className="mb-3">
+                            <button
+                              type="button"
+                              onClick={() => setReceiptPopupUrl(editReceiptUrl)}
+                              className="group relative overflow-hidden rounded-lg border border-slate-200 hover:border-indigo-400 transition-colors w-full"
+                            >
+                              {editReceiptUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                                <img src={editReceiptUrl} alt="Receipt Preview" className="mx-auto h-32 object-contain rounded-md group-hover:opacity-80 transition-opacity" />
+                              ) : (
+                                <div className="h-20 bg-slate-50 flex flex-col items-center justify-center gap-1 group-hover:bg-slate-100 transition-colors">
+                                  <Upload className="w-6 h-6 text-slate-400" />
+                                  <span className="text-xs text-slate-500 font-medium">PDF — klik untuk lihat</span>
+                                </div>
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                <span className="text-white text-xs font-bold bg-black/50 px-2 py-1 rounded">Klik untuk perbesar</span>
+                              </div>
+                            </button>
                           </div>
                         ) : (
                           <Upload className="mx-auto h-12 w-12 text-slate-400" />
