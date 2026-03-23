@@ -71,6 +71,7 @@ export default function Ushers() {
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({ ...emptyForm });
   const [ktpFile, setKtpFile] = useState<File | null>(null);
+  const [ktpPopupUrl, setKtpPopupUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -254,7 +255,7 @@ export default function Ushers() {
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Usher</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bank</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Proyek</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Proyek Berlangsung</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -294,15 +295,13 @@ export default function Ushers() {
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end space-x-2">
                           {usher.ktpUrl && (
-                            <a
-                              href={usher.ktpUrl.startsWith('https://') ? usher.ktpUrl : '#'}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => setKtpPopupUrl(usher.ktpUrl)}
                               className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                               title="View KTP"
                             >
                               <FileText className="w-4 h-4" />
-                            </a>
+                            </button>
                           )}
                           <button
                             onClick={() => handleOpenModal(usher)}
@@ -495,6 +494,30 @@ export default function Ushers() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* KTP Popup */}
+      {ktpPopupUrl && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-slate-900/70" onClick={() => setKtpPopupUrl(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-600" /> Dokumen KTP
+              </h2>
+              <button onClick={() => setKtpPopupUrl(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {ktpPopupUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                <img src={ktpPopupUrl} alt="KTP" className="w-full rounded-lg object-contain max-h-[70vh]" />
+              ) : (
+                <iframe src={ktpPopupUrl} className="w-full h-[70vh] rounded-lg" title="KTP Document" />
+              )}
+            </div>
           </div>
         </div>
       )}
