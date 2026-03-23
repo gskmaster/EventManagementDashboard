@@ -57,4 +57,16 @@ jobs:
             sudo docker pull gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
             sudo docker stop ${{ env.SERVICE_NAME }} || true
             sudo docker rm ${{ env.SERVICE_NAME }} || true
-            sudo docker run -d --name ${{ env.SERVICE_NAME }} --restart always -p 80:8080 gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+            sudo docker run -d --name ${{ env.SERVICE_NAME }} --restart always -p 8080:8080 gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+            sudo apt-get install -y nginx
+            sudo tee /etc/nginx/sites-available/default > /dev/null <<'EOF'
+            server {
+                listen 80;
+                location / {
+                    proxy_pass http://localhost:8080;
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                }
+            }
+            EOF
+            sudo systemctl restart nginx
