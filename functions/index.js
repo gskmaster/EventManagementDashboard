@@ -229,25 +229,32 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
     const nikMatch = fullText.match(/\b(\d{16})\b/);
     const nik = nikMatch ? nikMatch[1] : '';
 
-    const lines = fullText.split('\n').map(l => l.trim());
+    const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     let fullName = '';
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      // Match "NAMA" followed by optional colon/space and then capture text
-      const namaMatch = line.match(/[Nn][Aa][Mm][Aa]\s*[:\s]*\s*(.*)/);
-      if (namaMatch) {
-        let nameCandidate = namaMatch[1].trim();
-        // If the line was just "NAMA" or "NAMA:", look at the next line
-        if ((nameCandidate === '' || nameCandidate === ':') && i + 1 < lines.length) {
+      const line = lines[i].toUpperCase();
+      // Match "NAMA" or common OCR misreads like "NAMA:" or "NAM A"
+      if (line.includes('NAMA')) {
+        let nameCandidate = '';
+        // Check if name is on the same line after NAMA
+        const afterNama = line.split('NAMA')[1] || '';
+        const cleanAfter = afterNama.replace(/^[^A-Z]+/, '').trim();
+        
+        if (cleanAfter.length > 3) {
+          nameCandidate = cleanAfter;
+        } else if (i + 1 < lines.length) {
+          // Check next line
           nameCandidate = lines[i+1].trim();
         }
-        // Clean up: remove "NIK", ":" or other typical OCR noise at start/end
-        fullName = nameCandidate
-          .replace(/^[:\s-]+/, '')
-          .replace(/[^A-Za-z\s]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (fullName.length > 2) break;
+
+        if (nameCandidate) {
+          fullName = nameCandidate
+            .replace(/[:]/g, '')
+            .replace(/[^A-Za-z\s]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (fullName.length > 2) break;
+        }
       }
     }
 

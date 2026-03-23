@@ -23,7 +23,6 @@ export default function PublicRegistration() {
 
   const [consentGiven, setConsentGiven] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [ktpFile, setKtpFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     nik: '',
@@ -34,7 +33,8 @@ export default function PublicRegistration() {
     kecamatan: '',
     desa: '',
     posisi: '',
-    posisiLainnya: ''
+    posisiLainnya: '',
+    ktpUrl: '', // Now populated by scan
   });
 
   useEffect(() => {
@@ -107,9 +107,8 @@ export default function PublicRegistration() {
       return;
     }
     
-    if (!ktpFile) {
-      setError('Silakan upload foto KTP Anda.');
-      setSubmitting(false);
+    if (!formData.ktpUrl) {
+      setError('Silakan scan KTP Anda terlebih dahulu.');
       return;
     }
     
@@ -117,13 +116,8 @@ export default function PublicRegistration() {
     setError('');
 
     try {
-      // Upload KTP File
-      let ktpUrl = '';
-      if (ktpFile) {
-        const storageRef = ref(storage, `ktp_registrants/${Date.now()}_${ktpFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, ktpFile);
-        ktpUrl = await getDownloadURL(uploadResult.ref);
-      }
+      // Foto KTP is now handled by the scan button
+      const ktpUrl = formData.ktpUrl;
 
       const newPerson = {
         ...formData,
@@ -294,8 +288,8 @@ export default function PublicRegistration() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <KTPScanButton
                 accentColor="indigo"
-                onExtracted={({ nik, fullName }) =>
-                  setFormData(prev => ({ ...prev, nik, fullName }))
+                onExtracted={({ nik, fullName, ktpUrl }) =>
+                  setFormData(prev => ({ ...prev, nik, fullName, ktpUrl }))
                 }
               />
               <div>
@@ -451,31 +445,6 @@ export default function PublicRegistration() {
                 </div>
               )}
 
-              {/* Foto KTP */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="block text-sm font-medium text-slate-700 mb-1 text-center sm:text-left">
-                  Foto / Scan KTP <span className="text-red-500">*</span>
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-indigo-400 transition-colors group cursor-pointer relative">
-                  <div className="space-y-1 text-center">
-                    <FileText className="mx-auto h-10 w-10 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                    <div className="flex text-sm text-slate-600 justify-center">
-                      <label className="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500">
-                        <span>{ktpFile ? ktpFile.name : 'Pilih file KTP'}</span>
-                        <input 
-                          type="file" 
-                          className="sr-only" 
-                          accept="image/*,application/pdf"
-                          capture="environment"
-                          required
-                          onChange={(e) => setKtpFile(e.target.files?.[0] || null)} 
-                        />
-                      </label>
-                    </div>
-                    <p className="text-xs text-slate-500">PNG, JPG, atau PDF, maks. 5MB</p>
-                  </div>
-                </div>
-              </div>
 
               <ConsentCheckbox checked={consentGiven} onChange={setConsentGiven} />
               <RecaptchaWidget onChange={setRecaptchaToken} />

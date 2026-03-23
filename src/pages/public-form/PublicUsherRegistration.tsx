@@ -23,8 +23,8 @@ export default function PublicUsherRegistration() {
     accountNumber: '',
     accountName: '',
     bankBranch: '',
+    ktpUrl: '', // Now populated by scan
   });
-  const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [consentGiven, setConsentGiven] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
@@ -76,12 +76,8 @@ export default function PublicUsherRegistration() {
         return;
       }
 
-      let ktpUrl = '';
-      if (ktpFile) {
-        const storageRef = ref(storage, `ktp_ushers/${Date.now()}_${ktpFile.name}`);
-        const uploadResult = await uploadBytes(storageRef, ktpFile);
-        ktpUrl = await getDownloadURL(uploadResult.ref);
-      }
+      // Foto KTP is now handled by the scan button
+      const ktpUrl = formData.ktpUrl;
 
       const now = new Date().toISOString();
       await addDoc(collection(db, 'ushers'), {
@@ -149,8 +145,8 @@ export default function PublicUsherRegistration() {
                 <h3 className="text-sm font-bold text-slate-800 mb-3">Data Diri</h3>
                 <KTPScanButton
                   accentColor="violet"
-                  onExtracted={({ nik, fullName }) =>
-                    setFormData(prev => ({ ...prev, nik, fullName }))
+                  onExtracted={({ nik, fullName, ktpUrl }) =>
+                    setFormData(prev => ({ ...prev, nik, fullName, ktpUrl }))
                   }
                 />
                 <div className="space-y-4">
@@ -204,25 +200,6 @@ export default function PublicUsherRegistration() {
                 </div>
               </div>
 
-              {/* Foto KTP */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Foto / Scan KTP
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-violet-400 transition-colors group cursor-pointer">
-                  <div className="space-y-1 text-center">
-                    <FileText className="mx-auto h-10 w-10 text-slate-400 group-hover:text-violet-500 transition-colors" />
-                    <div className="flex text-sm text-slate-600 justify-center">
-                      <label className="relative cursor-pointer rounded-md font-medium text-violet-600 hover:text-violet-500">
-                        <span>{ktpFile ? ktpFile.name : 'Pilih file KTP'}</span>
-                        <input type="file" className="sr-only" accept="image/*,application/pdf" capture="environment"
-                          onChange={(e) => setKtpFile(e.target.files?.[0] || null)} />
-                      </label>
-                    </div>
-                    <p className="text-xs text-slate-500">PNG, JPG, atau PDF, maks. 5MB</p>
-                  </div>
-                </div>
-              </div>
 
               {/* Informasi Rekening Bank */}
               <div className="pt-4 border-t border-slate-100">

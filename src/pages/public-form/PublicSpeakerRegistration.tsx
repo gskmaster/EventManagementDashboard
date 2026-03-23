@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
-import { User, CheckCircle2, FileText, X, Award, Loader2 } from 'lucide-react';
+import { CheckCircle2, FileText, X, Award, Loader2, User } from 'lucide-react';
+import KTPScanButton from '../../components/KTPScanButton';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
 import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
 import { logConsent } from '../../lib/consentLogger';
@@ -26,8 +27,8 @@ export default function PublicSpeakerRegistration() {
     bankAccount: '',
     bankBranch: '',
     accountName: '',
+    ktpUrl: '', // Now populated by scan
   });
-  const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [expertiseInput, setExpertiseInput] = useState('');
 
   const handleAddExpertise = (e: React.KeyboardEvent) => {
@@ -47,8 +48,8 @@ export default function PublicSpeakerRegistration() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!ktpFile) {
-      setError('Silakan unggah file KTP Anda.');
+    if (!formData.ktpUrl) {
+      setError('Silakan scan KTP Anda terlebih dahulu.');
       return;
     }
 
@@ -56,9 +57,8 @@ export default function PublicSpeakerRegistration() {
     setError('');
 
     try {
-      const storageRef = ref(storage, `ktp/${Date.now()}_${ktpFile.name}`);
-      const uploadResult = await uploadBytes(storageRef, ktpFile);
-      const ktpUrl = await getDownloadURL(uploadResult.ref);
+      // Foto KTP is now handled by the scan button
+      const ktpUrl = formData.ktpUrl;
 
       const now = new Date().toISOString();
       await addDoc(collection(db, 'Speakers'), {
@@ -122,6 +122,12 @@ export default function PublicSpeakerRegistration() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              <KTPScanButton
+                accentColor="indigo"
+                onExtracted={({ nik, fullName, ktpUrl }) =>
+                  setFormData(prev => ({ ...prev, nik, fullName, ktpUrl }))
+                }
+              />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   NIK <span className="text-red-500">*</span>
@@ -273,27 +279,6 @@ export default function PublicSpeakerRegistration() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Unggah Foto/Scan KTP <span className="text-red-500">*</span>
-                </label>
-                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-indigo-400 transition-colors group cursor-pointer">
-                  <div className="space-y-1 text-center">
-                    <FileText className="mx-auto h-10 w-10 text-slate-400 group-hover:text-indigo-500 transition-colors" />
-                    <label className="relative cursor-pointer rounded-md font-medium text-indigo-600 hover:text-indigo-500 text-sm">
-                      <span>{ktpFile ? ktpFile.name : 'Pilih file KTP'}</span>
-                      <input
-                        type="file"
-                        className="sr-only"
-                        accept="image/*,application/pdf"
-                        capture="environment"
-                        onChange={(e) => setKtpFile(e.target.files?.[0] || null)}
-                      />
-                    </label>
-                    <p className="text-xs text-slate-500">PNG, JPG, PDF hingga 5MB</p>
-                  </div>
-                </div>
-              </div>
 
               <ConsentCheckbox checked={consentGiven} onChange={setConsentGiven} />
               <RecaptchaWidget onChange={setRecaptchaToken} />
