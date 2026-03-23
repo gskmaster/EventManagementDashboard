@@ -244,10 +244,16 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
     // Header words to ignore
     const headerWords = ['PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA'];
     // KTP Label words that are NOT names
-    const labelWords = ['NIK', 'NAMA', 'TEMPAT', 'LAHIR', 'KELAMIN', 'ALAMAT', 'RT/RW', 'KEL/DESA', 'KECAMATAN', 'AGAMA', 'STATUS', 'PERKAWINAN', 'PEKERJAAN', 'KEWARGANEGARAAN', 'BERLAKU', 'HINGGA', 'GOL DARAH'];
+    const labelPatterns = [
+      /^NIK/, /^NAMA/, /^TEMPAT/, /^LAHIR/, /^KELAMIN/, /^ALAMAT/, /^RT\/RW/, 
+      /^KEL\/DESA/, /^KECAMATAN/, /^AGAMA/, /^STATUS/, /^PERKAWINAN/, 
+      /^PEKERJAAN/, /^KEWARGANEGARAAN/, /^BERLAKU/, /^HINGGA/, /^GOL DARAH/
+    ];
+
+    console.log('OCR Raw Lines:', JSON.stringify(lines));
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].toUpperCase();
+      const line = lines[i].toUpperCase().trim();
       
       // If we found NIK, only look for Nama after it (usually same line or next)
       if (nikLineIndex !== -1 && i < nikLineIndex) continue;
@@ -255,51 +261,51 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
       // Skip headers
       if (headerWords.some(hw => line.includes(hw))) continue;
 
-      // Match "NAMA" or similar, or just any line after NIK if we still don't have a name
-      // But ensure it's NOT just another label
-      const isLabelOnly = labelWords.some(lw => line === lw || line.startsWith(lw + ' ') || line.startsWith(lw + ':'));
-      
-      if (line.includes('NAMA') || (nikLineIndex !== -1 && i > nikLineIndex && fullName === '' && !isLabelOnly)) {
-        let nameCandidate = '';
-        
-        // If line contains "NAMA", try to take what's after it
-        if (line.includes('NAMA')) {
-          const parts = line.split('NAMA');
-          nameCandidate = parts[parts.length - 1].trim();
-        } else if (!isLabelOnly) {
-          nameCandidate = line;
+      // SPECIFIC NAMA SEARCH (Highest Priority)
+      if (line.includes('NAMA')) {
+        // Try to get what's after "NAMA" or ":"
+        let afterNama = line.split('NAMA').pop();
+        if (afterNama.includes(':')) {
+           afterNama = afterNama.split(':').pop();
         }
         
-        // Clean up the candidate
-        nameCandidate = nameCandidate
-          .replace(/[:]/g, '')
-          .replace(/[^A-Z\s]/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-
-        // If candidate is a known label or too short, try next line if it's not a label
-        if ((labelWords.some(lw => nameCandidate === lw) || nameCandidate.length < 3) && i + 1 < lines.length) {
-          const nextLine = lines[i+1].toUpperCase();
-          const nextIsLabel = labelWords.some(lw => nextLine.includes(lw));
-          const nextIsHeader = headerWords.some(hw => nextLine.includes(hw));
-          
-          if (!nextIsLabel && !nextIsHeader && !nextLine.includes(nik)) {
-            nameCandidate = lines[i+1].toUpperCase()
-              .replace(/[^A-Z\s]/g, ' ')
-              .replace(/\s+/g, ' ')
-              .trim();
+        let candidate = afterNama.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        // If the line just had "NAMA :" but the name is on the next line
+        if (candidate.length < 3 && i + 1 < lines.length) {
+          const nextLine = lines[i+1].toUpperCase().trim();
+          const nextIsLabel = labelPatterns.some(lp => lp.test(nextLine));
+          if (!nextIsLabel && !headerWords.some(hw => nextLine.includes(hw))) {
+            candidate = nextLine.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
           }
         }
 
-        if (nameCandidate && nameCandidate.length >= 3 && !labelWords.includes(nameCandidate)) {
-          fullName = nameCandidate;
-          break; // Found it!
+        if (candidate.length >= 3 && !labelPatterns.some(lp => lp.test(candidate))) {
+          fullName = candidate;
+          break;
+        }
+      }
+    }
+
+    // fallback: if still empty, search for anything after NIK that isn't a label
+    if (fullName === '' && nikLineIndex !== -1) {
+      for (let i = nikLineIndex + 1; i < lines.length; i++) {
+        const line = lines[i].toUpperCase().trim();
+        const isLabel = labelPatterns.some(lp => lp.test(line));
+        const isHeader = headerWords.some(hw => line.includes(hw));
+        
+        if (!isLabel && !isHeader) {
+          const candidate = line.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+          if (candidate.length >= 3) {
+            fullName = candidate;
+            break;
+          }
         }
       }
     }
 
     console.log('Extracted V3 - NIK:', nik, 'Nama:', fullName);
-    res.status(200).json({ data: { nik, fullName } });
+    res.status(200).json({ data: { nik, fullName, rawLines: lines } });
   } catch (error) {
     console.error('extractKTPData error:', error);
     res.status(500).json({ error: error.message });
