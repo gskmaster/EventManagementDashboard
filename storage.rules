@@ -30,6 +30,12 @@ service firebase.storage {
       allow read: if true;
     }
 
+    // New unified KTP Scan path for all public forms
+    match /ktp_scans/{imageId} {
+      allow write: if request.resource.size < 5 * 1024 * 1024;
+      allow read: if true;
+    }
+
     // Bukti Potong PPh 21 (Tax Admin uploads, authenticated read)
     match /bukti_potong/{projectId}/{fileId} {
       allow write: if request.auth != null && request.resource.size < 5 * 1024 * 1024;
