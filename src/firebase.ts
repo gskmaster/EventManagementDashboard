@@ -39,9 +39,9 @@ export const functions = getFunctions(app, region);
  */
 export function getFunctionUrl(name: string): string {
   if (import.meta.env.DEV) {
-    return `http://localhost:5001/${firebaseConfig.projectId}/${region}/${name}`;
+    return `http://localhost:5001/${firebaseConfig.projectId}/${region}/${name}Http`;
   }
-  return `https://${region}-${firebaseConfig.projectId}.cloudfunctions.net/${name}`;
+  return `https://${region}-${firebaseConfig.projectId}.cloudfunctions.net/${name}Http`;
 }
 
 // Initialize Analytics conditionally (it requires measurementId and a browser context)
