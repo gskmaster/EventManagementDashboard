@@ -229,13 +229,25 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
     const nikMatch = fullText.match(/\b(\d{16})\b/);
     const nik = nikMatch ? nikMatch[1] : '';
 
-    const lines = fullText.split('\n');
+    const lines = fullText.split('\n').map(l => l.trim());
     let fullName = '';
-    for (const line of lines) {
-      const namaMatch = line.match(/[Nn][Aa][Mm][Aa]\s*[:\s]\s*(.+)/);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      // Match "NAMA" followed by optional colon/space and then capture text
+      const namaMatch = line.match(/[Nn][Aa][Mm][Aa]\s*[:\s]*\s*(.*)/);
       if (namaMatch) {
-        fullName = namaMatch[1].trim().replace(/[^A-Za-z\s]/g, '').trim();
-        if (fullName.length > 1) break;
+        let nameCandidate = namaMatch[1].trim();
+        // If the line was just "NAMA" or "NAMA:", look at the next line
+        if ((nameCandidate === '' || nameCandidate === ':') && i + 1 < lines.length) {
+          nameCandidate = lines[i+1].trim();
+        }
+        // Clean up: remove "NIK", ":" or other typical OCR noise at start/end
+        fullName = nameCandidate
+          .replace(/^[:\s-]+/, '')
+          .replace(/[^A-Za-z\s]/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (fullName.length > 2) break;
       }
     }
 
