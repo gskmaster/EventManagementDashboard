@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, getDocs, doc, updateDoc, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
@@ -23,6 +23,7 @@ export default function Projects() {
     startDate: '',
     endDate: '',
     pic: '',
+    picUserId: '',
     kabupaten: '',
     status: 'Planning'
   });
@@ -50,6 +51,9 @@ export default function Projects() {
   // Inline Edit State
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
   const [inlineEditStatus, setInlineEditStatus] = useState<string>('');
+
+  // Event Manager (PIC) state
+  const [allEventManagers, setAllEventManagers] = useState<{ id: string; displayName: string; email: string }[]>([]);
 
   // Usher / LO / Speaker assignment state
   const [allUshers, setAllUshers] = useState<{ id: string; fullName: string; email?: string; projectIds: string[] }[]>([]);
@@ -80,11 +84,17 @@ export default function Projects() {
 
   const fetchUsherAndLOOptions = async () => {
     try {
-      const [usherSnap, loSnap, speakerSnap] = await Promise.all([
+      const [usherSnap, loSnap, speakerSnap, emSnap] = await Promise.all([
         getDocs(collection(db, 'ushers')),
         getDocs(collection(db, 'liaison_officers')),
         getDocs(collection(db, 'Speakers')),
+        getDocs(query(collection(db, 'users'), where('role', '==', 'event_manager'))),
       ]);
+      setAllEventManagers(emSnap.docs.map(d => ({
+        id: d.id,
+        displayName: (d.data() as any).displayName || '',
+        email: (d.data() as any).email || '',
+      })));
       setAllUshers(usherSnap.docs.map(d => ({
         id: d.id,
         fullName: (d.data() as any).fullName || '',
@@ -143,8 +153,10 @@ export default function Projects() {
     }
     try {
       const selectedVenues = venueOptions.filter(v => newProjectVenueIds.includes(v.value));
+      const { picUserId, ...projectFields } = newProject;
       const newRef = await addDoc(collection(db, 'projects'), {
-        ...newProject,
+        ...projectFields,
+        picUserId: picUserId || '',
         venueIds: newProjectVenueIds,
         venues: selectedVenues.map(v => v.label),
         venue: selectedVenues.map(v => v.label).join(', '),
@@ -155,11 +167,12 @@ export default function Projects() {
       await Promise.all([
         ...newProjectUsherIds.map(id => updateDoc(doc(db, 'ushers', id), { projectIds: arrayUnion(newRef.id) })),
         ...newProjectLOIds.map(id => updateDoc(doc(db, 'liaison_officers', id), { projectIds: arrayUnion(newRef.id) })),
+        ...(picUserId ? [updateDoc(doc(db, 'users', picUserId), { projectIds: arrayUnion(newRef.id) })] : []),
       ]);
       showToast("Proyek berhasil dibuat!", "success");
       setShowProjectModal(false);
       setWizardStep(1);
-      setNewProject({ name: '', startDate: '', endDate: '', pic: '', kabupaten: '', status: 'Planning' });
+      setNewProject({ name: '', startDate: '', endDate: '', pic: '', picUserId: '', kabupaten: '', status: 'Planning' });
       setNewProjectVenueIds([]);
       setNewProjectUsherIds([]);
       setNewProjectLOIds([]);
@@ -554,7 +567,7 @@ export default function Projects() {
         {showProjectModal && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-              <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => { setShowProjectModal(false); setWizardStep(1); }}></div>
+              <div className="fixed inset-0 transition-opacity bg-slate-900/75" onClick={() => { setShowProjectModal(false); setWizardStep(1); setNewProject({ name: '', startDate: '', endDate: '', pic: '', picUserId: '', kabupaten: '', status: 'Planning' }); }}></div>
               <div className="relative inline-block w-full max-w-lg text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl overflow-hidden">
                 {/* Wizard Header */}
                 <div className="bg-indigo-600 px-6 pt-6 pb-4">
@@ -640,13 +653,21 @@ export default function Projects() {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">PIC Proyek <span className="text-red-500">*</span></label>
-                        <input
-                          type="text"
-                          required
-                          value={newProject.pic}
-                          onChange={(e) => setNewProject({...newProject, pic: e.target.value})}
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="Nama PIC..."
+                        <Select
+                          options={allEventManagers.map(em => ({ value: em.id, label: em.displayName, sublabel: em.email }))}
+                          value={newProject.picUserId ? { value: newProject.picUserId, label: newProject.pic, sublabel: '' } : null}
+                          onChange={(sel: any) => setNewProject({ ...newProject, picUserId: sel?.value || '', pic: sel?.label || '' })}
+                          placeholder="Pilih Event Manager..."
+                          isClearable
+                          menuPosition="fixed"
+                          formatOptionLabel={(opt: any) => (
+                            <div>
+                              <div className="text-sm font-medium">{opt.label}</div>
+                              {opt.sublabel && <div className="text-xs text-slate-400">{opt.sublabel}</div>}
+                            </div>
+                          )}
+                          className="react-select-container"
+                          classNamePrefix="react-select"
                         />
                       </div>
                       <div>
@@ -677,7 +698,7 @@ export default function Projects() {
                       <div className="flex justify-between pt-2">
                         <button
                           type="button"
-                          onClick={() => { setShowProjectModal(false); setWizardStep(1); }}
+                          onClick={() => { setShowProjectModal(false); setWizardStep(1); setNewProject({ name: '', startDate: '', endDate: '', pic: '', picUserId: '', kabupaten: '', status: 'Planning' }); }}
                           className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50"
                         >
                           Batal
@@ -709,10 +730,12 @@ export default function Projects() {
                       4: { title: 'Tugaskan Narasumber', people: allSpeakers, ids: newProjectSpeakerIds, setIds: setNewProjectSpeakerIds, search: wizardSearchSpeaker, setSearch: setWizardSearchSpeaker, sub: (p: any) => p.institution || '' },
                     }[wizardStep]!;
 
-                    const filtered = stepConfig.people.filter(p =>
+                    const allFiltered = stepConfig.people.filter(p =>
                       p.fullName.toLowerCase().includes(stepConfig.search.toLowerCase()) ||
                       stepConfig.sub(p).toLowerCase().includes(stepConfig.search.toLowerCase())
                     );
+                    // Show top 5 when no search query, all matches when searching
+                    const filtered = stepConfig.search.trim() ? allFiltered : allFiltered.slice(0, 5);
                     const assigned = stepConfig.people.filter(p => stepConfig.ids.includes(p.id));
 
                     const togglePerson = (id: string) => {
@@ -758,6 +781,9 @@ export default function Projects() {
                         )}
 
                         {/* Person cards */}
+                        {!stepConfig.search.trim() && allFiltered.length > 5 && (
+                          <p className="text-xs text-slate-400 text-center">Menampilkan 5 terbaru · Ketik untuk cari lebih</p>
+                        )}
                         <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                           {filtered.length === 0 && (
                             <div className="text-center py-8 text-slate-400 text-sm">
