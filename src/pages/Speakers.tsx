@@ -73,6 +73,7 @@ export default function Speakers() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSpeaker, setEditingSpeaker] = useState<Speaker | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [ktpPopupUrl, setKtpPopupUrl] = useState<string | null>(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -398,15 +399,13 @@ export default function Speakers() {
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end space-x-2">
                           {speaker.ktpUrl && (
-                            <a 
-                              href={speaker.ktpUrl.startsWith('https://') ? speaker.ktpUrl : '#'} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => setKtpPopupUrl(speaker.ktpUrl)}
                               className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                               title="View KTP"
                             >
                               <FileText className="w-4 h-4" />
-                            </a>
+                            </button>
                           )}
                           <button
                             onClick={() => handleOpenModal(speaker)}
@@ -682,6 +681,30 @@ export default function Speakers() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* KTP Popup */}
+      {ktpPopupUrl && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-slate-900/70" onClick={() => setKtpPopupUrl(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-600" /> Dokumen KTP
+              </h2>
+              <button onClick={() => setKtpPopupUrl(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {ktpPopupUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                <img src={ktpPopupUrl} alt="KTP" className="w-full rounded-lg object-contain max-h-[70vh]" />
+              ) : (
+                <iframe src={ktpPopupUrl} className="w-full h-[70vh] rounded-lg" title="KTP Document" />
+              )}
+            </div>
           </div>
         </div>
       )}
