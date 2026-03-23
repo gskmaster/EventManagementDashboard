@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../firebase';
+import { functions, getFunctionUrl } from '../firebase';
 import { Camera, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface KTPExtractResult {
@@ -45,12 +45,20 @@ export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: P
         reader.readAsDataURL(file);
       });
 
-      const extractKTPData = httpsCallable<{ imageBase64: string }, KTPExtractResult>(
-        functions,
-        'extractKTPData'
-      );
-      const res = await extractKTPData({ imageBase64: base64 });
-      const { nik, fullName } = res.data;
+      // Use fetch for onRequest function (fixes CORS preflight issues)
+      const url = getFunctionUrl('extractKTPData');
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64 }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`KTP OCR failed with status ${response.status}`);
+      }
+
+      const result = await response.json();
+      const { nik, fullName } = result.data;
 
       if (!nik && !fullName) {
         setStatus('error');

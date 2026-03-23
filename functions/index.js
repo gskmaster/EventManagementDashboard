@@ -141,76 +141,107 @@ exports.verifyAuditIntegrity = functions.https.onCall(async (data, context) => {
 });
 
 /**
- * checkUniqueUser — HTTPS callable (public, no auth required)
+ * checkUniqueUser — HTTPS onRequest (public, no auth required)
  * 
  * Securely checks if an email or phone number already exists in
  * the specified collection without exposing the collection data.
  */
-exports.checkUniqueUser = functions.https.onCall(async (data, context) => {
+exports.checkUniqueUser = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const data = req.body.data || req.body;
   const { collectionName, email, mobilePhone } = data;
   
   if (!collectionName || !['ushers', 'liaison_officers'].includes(collectionName)) {
-    throw new functions.https.HttpsError('invalid-argument', 'Invalid collection name.');
+    res.status(400).json({ error: 'Invalid collection name.' });
+    return;
   }
 
-  // Check email
-  if (email && email.trim() !== '') {
-    const emailSnap = await db.collection(collectionName).where('email', '==', email.trim()).limit(1).get();
-    if (!emailSnap.empty) return { isUnique: false, type: 'email' };
-  }
+  try {
+    // Check email
+    if (email && email.trim() !== '') {
+      const emailSnap = await db.collection(collectionName).where('email', '==', email.trim()).limit(1).get();
+      if (!emailSnap.empty) {
+        res.status(200).json({ data: { isUnique: false, type: 'email' } });
+        return;
+      }
+    }
 
-  // Check phone
-  if (mobilePhone && mobilePhone.trim() !== '') {
-    const phoneSnap = await db.collection(collectionName).where('mobilePhone', '==', mobilePhone.trim()).limit(1).get();
-    if (!phoneSnap.empty) return { isUnique: false, type: 'phone' };
-  }
+    // Check phone
+    if (mobilePhone && mobilePhone.trim() !== '') {
+      const phoneSnap = await db.collection(collectionName).where('mobilePhone', '==', mobilePhone.trim()).limit(1).get();
+      if (!phoneSnap.empty) {
+        res.status(200).json({ data: { isUnique: false, type: 'phone' } });
+        return;
+      }
+    }
 
-  return { isUnique: true };
+    res.status(200).json({ data: { isUnique: true } });
+  } catch (error) {
+    console.error('checkUniqueUser error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 /**
- * extractKTPData — HTTPS callable (public, no auth required)
+ * extractKTPData — HTTPS onRequest (public, no auth required)
  *
  * Receives a base64-encoded KTP image, runs Google Cloud Vision OCR,
  * and parses the Indonesian ID card fields: NIK (16 digits) and Nama.
- *
- * Input:  { imageBase64: string }
- * Output: { nik: string, fullName: string }
  */
-exports.extractKTPData = functions.https.onCall(async (data, context) => {
+exports.extractKTPData = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const data = req.body.data || req.body;
   const { imageBase64 } = data;
 
   if (!imageBase64 || typeof imageBase64 !== 'string') {
-    throw new functions.https.HttpsError('invalid-argument', 'imageBase64 is required.');
+    res.status(400).json({ error: 'imageBase64 is required.' });
+    return;
   }
 
-  // Guard: ~5MB max (base64 inflates ~33%)
   if (imageBase64.length > 7 * 1024 * 1024) {
-    throw new functions.https.HttpsError('invalid-argument', 'Image too large. Max 5MB.');
+    res.status(400).json({ error: 'Image too large. Max 5MB.' });
+    return;
   }
 
-  const client = new vision.ImageAnnotatorClient();
-  const [result] = await client.documentTextDetection({
-    image: { content: imageBase64 },
-  });
+  try {
+    const client = new vision.ImageAnnotatorClient();
+    const [result] = await client.documentTextDetection({
+      image: { content: imageBase64 },
+    });
 
-  const fullText = result.fullTextAnnotation?.text || '';
+    const fullText = result.fullTextAnnotation?.text || '';
+    const nikMatch = fullText.match(/\b(\d{16})\b/);
+    const nik = nikMatch ? nikMatch[1] : '';
 
-  // NIK: first standalone 16-digit sequence
-  const nikMatch = fullText.match(/\b(\d{16})\b/);
-  const nik = nikMatch ? nikMatch[1] : '';
-
-  // Nama: text on the line containing "Nama" keyword (handles "Nama :", "NAMA:")
-  const lines = fullText.split('\n');
-  let fullName = '';
-  for (const line of lines) {
-    const namaMatch = line.match(/[Nn][Aa][Mm][Aa]\s*[:\s]\s*(.+)/);
-    if (namaMatch) {
-      // Strip non-letter characters (digits, punctuation) from name
-      fullName = namaMatch[1].trim().replace(/[^A-Za-z\s]/g, '').trim();
-      if (fullName.length > 1) break;
+    const lines = fullText.split('\n');
+    let fullName = '';
+    for (const line of lines) {
+      const namaMatch = line.match(/[Nn][Aa][Mm][Aa]\s*[:\s]\s*(.+)/);
+      if (namaMatch) {
+        fullName = namaMatch[1].trim().replace(/[^A-Za-z\s]/g, '').trim();
+        if (fullName.length > 1) break;
+      }
     }
-  }
 
-  return { nik, fullName };
+    res.status(200).json({ data: { nik, fullName } });
+  } catch (error) {
+    console.error('extractKTPData error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });

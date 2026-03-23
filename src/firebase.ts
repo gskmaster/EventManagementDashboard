@@ -34,6 +34,16 @@ export const storage = getStorage(app);
 const region = import.meta.env.VITE_FIREBASE_REGION || 'asia-southeast2';
 export const functions = getFunctions(app, region);
 
+/**
+ * Returns the full URL for an onRequest Cloud Function based on current environment.
+ */
+export function getFunctionUrl(name: string): string {
+  if (import.meta.env.DEV) {
+    return `http://localhost:5001/${firebaseConfig.projectId}/${region}/${name}`;
+  }
+  return `https://${region}-${firebaseConfig.projectId}.cloudfunctions.net/${name}`;
+}
+
 // Initialize Analytics conditionally (it requires measurementId and a browser context)
 // We also disable it in DEV mode because Firebase Analytics does not have a local emulator
 // and will fail with 403 trying to reach the real API using the 'demo-' project ID.

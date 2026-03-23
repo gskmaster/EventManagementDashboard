@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker ps --format \"{{.Names}}\\\\t{{.Ports}}\")"
+      "Bash(docker ps --format \"{{.Names}}\\\\t{{.Ports}}\")",
+      "Bash(gcloud compute:*)",
+      "Bash(nslookup eveniser.gsk.co.id 8.8.8.8)",
+      "Bash(Resolve-DnsName eveniser.gsk.co.id)",
+      "Bash(nslookup eveniser.gsk.co.id 1.1.1.1)",
+      "Bash(git add .github/workflows/deploy.yml)",
+      "Bash(gh run view 23 --log-failed)",
+      "Bash(gh run list --limit 3)",
+      "Bash(gh run view 23419460148 --log-failed)",
+      "Bash(git add src/pages/LiaisonOfficers.tsx src/pages/Ushers.tsx)",
+      "Bash(xargs grep -l \"register-lo\\\\|register-usher\\\\|RegisterLO\\\\|RegisterUsher\\\\|PublicForm\\\\|public\")",
+      "Bash(xargs grep -l \"register-lo\\\\|RegisterLO\\\\|register_lo\\\\|mobilePhone.*nik\\\\|nik.*mobilePhone\")"
     ]
   }
 }

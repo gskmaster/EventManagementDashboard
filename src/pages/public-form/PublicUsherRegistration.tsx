@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import { db, storage, functions } from '../../firebase';
+import { db, storage, functions, getFunctionUrl } from '../../firebase';
 import { CheckCircle2, FileText, Loader2, UserCheck } from 'lucide-react';
 import KTPScanButton from '../../components/KTPScanButton';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
@@ -48,15 +48,24 @@ export default function PublicUsherRegistration() {
     }
 
     try {
-      // Periksa email unik menggunakan Cloud Function secara aman
-      const checkUniqueUser = httpsCallable<{collectionName: string, email?: string, mobilePhone?: string}, {isUnique: boolean, type?: string}>(functions, 'checkUniqueUser');
-      const uniqueRes = await checkUniqueUser({
-        collectionName: 'ushers',
-        email: formData.email.trim(),
-        mobilePhone: formData.mobilePhone.trim(),
+      // Securely check for uniqueness via Cloud Function (onRequest)
+      const checkUrl = getFunctionUrl('checkUniqueUser');
+      const checkRes = await fetch(checkUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collectionName: 'ushers',
+          email: formData.email.trim(),
+          mobilePhone: formData.mobilePhone.trim(),
+        }),
       });
-      
-      const { isUnique, type } = uniqueRes.data;
+
+      if (!checkRes.ok) {
+        throw new Error(`Uniqueness check failed with status ${checkRes.status}`);
+      }
+
+      const checkResult = await checkRes.json();
+      const { isUnique, type } = checkResult.data;
       if (!isUnique) {
         if (type === 'email') {
           setError('Email ini sudah terdaftar. Silakan gunakan alamat email lain.');
