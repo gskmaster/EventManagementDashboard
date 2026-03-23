@@ -249,7 +249,7 @@ service cloud.firestore {
     }
 
     function isValidSubmission(data) {
-      return hasOnlyAllowedFields(['projectId', 'institutionId', 'kabupaten', 'kecamatan', 'desa', 'transferpic', 'amount', 'receiptUrl', 'status', 'createdAt']) &&
+      return hasOnlyAllowedFields(['projectId', 'institutionId', 'kabupaten', 'kecamatan', 'desa', 'transferpic', 'email', 'amount', 'receiptUrl', 'status', 'createdAt']) &&
              data.projectId is string && data.projectId.size() > 0 &&
              data.institutionId is string && data.institutionId.size() > 0 &&
              data.transferpic is string && data.transferpic.size() > 0 &&
