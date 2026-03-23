@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage, getFunctionUrl, firebaseConfig } from '../firebase';
-import { Camera, Loader2, CheckCircle2, AlertCircle, X, Flashlight, RefreshCcw } from 'lucide-react';
+import { storage, getFunctionUrl } from '../firebase';
+import { Camera, Loader2, CheckCircle2, AlertCircle, X, Flashlight, RefreshCcw, Upload, FileImage } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface KTPExtractResult {
@@ -23,12 +23,13 @@ const colorMap = {
 
 export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: Props) {
   const [showScanner, setShowScanner] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'processing' | 'success' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const colors = colorMap[accentColor];
 
   // Camera handling
@@ -64,39 +65,18 @@ export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: P
     }
   };
 
-  const captureAndProcess = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-
-    setStatus('loading');
+  const processImage = async (blob: Blob, base64: string) => {
+    setStatus('processing');
     
     try {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext('2d');
-      if (!context) return;
-
-      // Draw current frame to canvas
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      // 1. Get Base64 for OCR
-      const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-
-      // 2. Get Blob for Firebase Storage
-      const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.8));
-      
-      stopCamera();
-      setShowScanner(false);
-
-      // 3. Upload to Firebase Storage
+      // 1. Upload to Firebase Storage
       const storagePath = `ktp_scans/${Date.now()}_ktp.jpg`;
       const storageRef = ref(storage, storagePath);
       const uploadResult = await uploadBytes(storageRef, blob);
       const ktpUrl = await getDownloadURL(uploadResult.ref);
 
-      // 4. Run OCR via Cloud Function
-      const url = getFunctionUrl('extractKTPData');
+      // 2. Run OCR via Cloud Function
+      const url = getFunctionUrl('extractKTPDataV3'); // Use V3 as confirmed
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +96,7 @@ export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: P
         
         if (!nik && !fullName) {
           setStatus('error');
-          setErrorMsg('Data tidak terbaca. Pastikan foto KTP jelas dan berada di dalam bingkai.');
+          setErrorMsg('Data tidak terbaca. Pastikan foto KTP jelas.');
           return;
         }
 
@@ -133,30 +113,122 @@ export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: P
     }
   };
 
+  const captureAndProcess = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+
+    setStatus('loading');
+    
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+      const blob = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.8));
+      
+      stopCamera();
+      setShowScanner(false);
+      
+      await processImage(blob, base64);
+    } catch (err) {
+      console.error('Capture error:', err);
+      setStatus('error');
+      setErrorMsg('Gagal mengambil gambar.');
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setStatus('loading');
+    try {
+      // Create preview & convert to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onload = () => {
+          const res = reader.result as string;
+          resolve(res.split(',')[1]);
+        };
+      });
+      reader.readAsDataURL(file);
+      const base64 = await base64Promise;
+      
+      await processImage(file, base64);
+    } catch (err) {
+      console.error('File upload error:', err);
+      setStatus('error');
+      setErrorMsg('Gagal mengunggah file.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
-    <div className="mb-4">
-      {/* Main Button */}
+    <div className="mb-6">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        accept="image/*" 
+        className="hidden" 
+      />
+
+      {/* Main Container */}
       {!previewUrl ? (
-        <button
-          type="button"
-          onClick={() => { setStatus('idle'); setShowScanner(true); }}
-          className={`w-full flex items-center justify-center gap-3 px-6 py-3.5 border-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${colors.btn}`}
-        >
-          <Camera className="w-5 h-5" /> 
-          Scan KTP untuk isi otomatis
-        </button>
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              type="button"
+              disabled={status === 'processing' || status === 'loading'}
+              onClick={() => { setStatus('idle'); setShowScanner(true); }}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 border-2 rounded-xl text-sm font-bold transition-all active:scale-[0.98] ${colors.btn} disabled:opacity-50`}
+            >
+              <Camera className="w-5 h-5 shrink-0" /> 
+              Scan Kamera
+            </button>
+            <button
+              type="button"
+              disabled={status === 'processing' || status === 'loading'}
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3.5 border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-bold transition-all active:scale-[0.98] disabled:opacity-50`}
+            >
+              <Upload className="w-5 h-5 shrink-0" /> 
+              Unggah File KTP
+            </button>
+          </div>
+          
+          <AnimatePresence>
+            {(status === 'processing' || status === 'loading') && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex items-center justify-center gap-3 p-4 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-700"
+              >
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span className="text-sm font-bold animate-pulse">Sedang Memproses KTP...</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       ) : (
         <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
           <div className="relative w-16 h-10 bg-slate-200 rounded overflow-hidden flex-shrink-0 border border-slate-300">
             <img src={previewUrl} alt="KTP Preview" className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-xs font-bold text-slate-800 truncate">KTP Berhasil Discan</p>
-            <p className="text-[10px] text-slate-500 truncate">Foto telah diunggah otomatis</p>
+            <p className="text-xs font-bold text-slate-800 truncate">KTP Berhasil Diterima</p>
+            <p className="text-[10px] text-slate-500 truncate">Data otomatis terisi</p>
           </div>
           <button 
             type="button" 
-            onClick={() => { setPreviewUrl(null); setStatus('idle'); setShowScanner(true); }}
+            onClick={() => { setPreviewUrl(null); setStatus('idle'); }}
             className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <RefreshCcw className="w-4 h-4" />
@@ -164,26 +236,26 @@ export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: P
         </div>
       )}
 
-      {/* Success/Error Feedback */}
+      {/* Feedback Messages */}
       <AnimatePresence>
         {status === 'success' && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }} 
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-2 flex items-center gap-1.5 text-xs text-green-700 font-medium px-1"
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-3 flex items-center gap-2 text-xs text-green-700 font-bold bg-green-50 p-2 rounded-lg border border-green-100"
           >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            Data terdeteksi. Periksa kembali sebelum submit.
+            <CheckCircle2 className="w-4 h-4" />
+            Data berhasil diekstrak! Silakan periksa kolom di bawah.
           </motion.div>
         )}
 
         {status === 'error' && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }} 
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-2 flex items-start gap-1.5 text-xs text-red-600 font-medium px-1"
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }}
+            className="mt-3 flex items-start gap-2 text-xs text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100"
           >
-            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
             {errorMsg}
           </motion.div>
         )}

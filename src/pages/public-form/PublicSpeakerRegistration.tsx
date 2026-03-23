@@ -49,7 +49,7 @@ export default function PublicSpeakerRegistration() {
     e.preventDefault();
 
     if (!formData.ktpUrl) {
-      setError('Silakan scan KTP Anda terlebih dahulu.');
+      setError('Silakan scan atau unggah KTP Anda terlebih dahulu.');
       return;
     }
 

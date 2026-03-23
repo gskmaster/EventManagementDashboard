@@ -226,25 +226,49 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
     });
 
     const fullText = result.fullTextAnnotation?.text || '';
+    const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    
+    // 1. Find NIK (16 digits)
     const nikMatch = fullText.match(/\b(\d{16})\b/);
     const nik = nikMatch ? nikMatch[1] : '';
 
-    const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // 2. Find Name (usually below NIK and starts with "Nama")
     let fullName = '';
+    let nikLineIndex = -1;
+
+    // First find where NIK is to use as anchor
+    if (nik) {
+      nikLineIndex = lines.findIndex(line => line.includes(nik));
+    }
+
+    // Header words to ignore
+    const headerWords = ['PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA'];
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toUpperCase();
-      // Match "NAMA" or common OCR misreads like "NAMA:" or "NAM A"
-      if (line.includes('NAMA')) {
+      
+      // If we found NIK, only look for Nama after it (usually same line or next)
+      if (nikLineIndex !== -1 && i < nikLineIndex) continue;
+
+      // Skip headers
+      if (headerWords.some(hw => line.includes(hw))) continue;
+
+      // Match "NAMA" or similar
+      if (line.includes('NAMA') || (nikLineIndex !== -1 && i > nikLineIndex && fullName === '')) {
         let nameCandidate = '';
-        // Check if name is on the same line after NAMA
-        const afterNama = line.split('NAMA')[1] || '';
-        const cleanAfter = afterNama.replace(/^[^A-Z]+/, '').trim();
         
-        if (cleanAfter.length > 3) {
-          nameCandidate = cleanAfter;
-        } else if (i + 1 < lines.length) {
-          // Check next line
-          nameCandidate = lines[i+1].trim();
+        // If line contains "NAMA", try to take what's after it
+        if (line.includes('NAMA')) {
+          const afterNama = line.split('NAMA')[1] || '';
+          nameCandidate = afterNama.replace(/^[^A-Z]+/, '').trim();
+        } 
+        
+        // If still empty or very short, take the next line IF it doesn't contain NAMA/NIK/Header
+        if (nameCandidate.length < 3 && i + 1 < lines.length) {
+          const nextLine = lines[i+1].toUpperCase();
+          if (!nextLine.includes('NIK') && !nextLine.includes('NAMA') && !headerWords.some(hw => nextLine.includes(hw))) {
+            nameCandidate = lines[i+1].trim();
+          }
         }
 
         if (nameCandidate) {
@@ -253,11 +277,13 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
             .replace(/[^A-Za-z\s]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim();
+          
           if (fullName.length > 2) break;
         }
       }
     }
 
+    console.log('Extracted V3 - NIK:', nik, 'Nama:', fullName);
     res.status(200).json({ data: { nik, fullName } });
   } catch (error) {
     console.error('extractKTPData error:', error);

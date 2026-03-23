@@ -76,6 +76,12 @@ export default function PublicLORegistration() {
         return;
       }
 
+      if (!formData.ktpUrl) {
+        setError('Silakan scan atau unggah KTP Anda terlebih dahulu.');
+        setSubmitting(false);
+        return;
+      }
+
       // Foto KTP is now handled by the scan button
       const ktpUrl = formData.ktpUrl;
 
