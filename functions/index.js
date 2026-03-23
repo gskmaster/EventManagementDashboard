@@ -241,13 +241,11 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
       nikLineIndex = lines.findIndex(line => line.includes(nik));
     }
 
-    // Header words to ignore
-    const headerWords = ['PROVINSI', 'KABUPATEN', 'KOTA', 'REPUBLIK', 'INDONESIA'];
-    // KTP Label words that are NOT names
+    // KTP Label words that are NOT names (partial matches allowed)
     const labelPatterns = [
-      /^NIK/, /^NAMA/, /^TEMPAT/, /^LAHIR/, /^KELAMIN/, /^ALAMAT/, /^RT\/RW/, 
-      /^KEL\/DESA/, /^KECAMATAN/, /^AGAMA/, /^STATUS/, /^PERKAWINAN/, 
-      /^PEKERJAAN/, /^KEWARGANEGARAAN/, /^BERLAKU/, /^HINGGA/, /^GOL DARAH/
+      /NIK/, /NAMA/, /TEMPAT/, /LAHIR/, /KELAMIN/, /ALAMAT/, /RT\/RW/, 
+      /KEL\/DESA/, /KECAMATAN/, /AGAMA/, /STATUS/, /PERKAWINAN/, 
+      /PEKERJAAN/, /KEWARGANEGARAAN/, /BERLAKU/, /HINGGA/, /GOL DARAH/
     ];
 
     console.log('OCR Raw Lines:', JSON.stringify(lines));
@@ -263,7 +261,7 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
 
       // SPECIFIC NAMA SEARCH (Highest Priority)
       if (line.includes('NAMA')) {
-        // Try to get what's after "NAMA" or ":"
+        // 1. Check current line (after NAMA or colon)
         let afterNama = line.split('NAMA').pop();
         if (afterNama.includes(':')) {
            afterNama = afterNama.split(':').pop();
@@ -271,12 +269,18 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
         
         let candidate = afterNama.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
         
-        // If the line just had "NAMA :" but the name is on the next line
-        if (candidate.length < 3 && i + 1 < lines.length) {
-          const nextLine = lines[i+1].toUpperCase().trim();
-          const nextIsLabel = labelPatterns.some(lp => lp.test(nextLine));
-          if (!nextIsLabel && !headerWords.some(hw => nextLine.includes(hw))) {
-            candidate = nextLine.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        // 2. If current line is empty or just label, search up to 10 next lines
+        if (candidate.length < 3) {
+          for (let j = 1; j <= 10 && i + j < lines.length; j++) {
+            const nextLine = lines[i+j].toUpperCase().trim();
+            const nextIsLabel = labelPatterns.some(lp => lp.test(nextLine));
+            const nextIsHeader = headerWords.some(hw => nextLine.includes(hw));
+            const nextIsNik = nextLine.includes(nik) || /^\d{16}$/.test(nextLine.replace(/\s/g, ''));
+
+            if (!nextIsLabel && !nextIsHeader && !nextIsNik) {
+              candidate = nextLine.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
+              if (candidate.length >= 3) break;
+            }
           }
         }
 
@@ -293,8 +297,9 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
         const line = lines[i].toUpperCase().trim();
         const isLabel = labelPatterns.some(lp => lp.test(line));
         const isHeader = headerWords.some(hw => line.includes(hw));
+        const isNik = line.includes(nik) || /^\d{16}$/.test(line.replace(/\s/g, ''));
         
-        if (!isLabel && !isHeader) {
+        if (!isLabel && !isHeader && !isNik) {
           const candidate = line.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
           if (candidate.length >= 3) {
             fullName = candidate;
