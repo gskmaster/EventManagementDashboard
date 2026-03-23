@@ -8,5 +8,7 @@ coverage/
 secrets/
 .env*
 !.env.example
+extensions/*.env
+extensions/*.secret.local
 firebase-data/
 emulator-data/
