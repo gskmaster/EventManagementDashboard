@@ -227,83 +227,89 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
 
     const fullText = result.fullTextAnnotation?.text || '';
     const lines = fullText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    
+
+    console.log('OCR Raw Lines:', JSON.stringify(lines));
+
     // 1. Find NIK (16 digits)
     const nikMatch = fullText.match(/\b(\d{16})\b/);
     const nik = nikMatch ? nikMatch[1] : '';
 
-    // 2. Find Name (usually below NIK and starts with "Nama")
-    let fullName = '';
-    let nikLineIndex = -1;
-
-    // First find where NIK is to use as anchor
-    if (nik) {
-      nikLineIndex = lines.findIndex(line => line.includes(nik));
-    }
-
-    // KTP Label words that are NOT names (partial matches allowed)
+    // KTP field label patterns — lines matching these are labels, not values
     const labelPatterns = [
-      /NIK/, /NAMA/, /TEMPAT/, /LAHIR/, /KELAMIN/, /ALAMAT/, /RT\/RW/, 
-      /KEL\/DESA/, /KECAMATAN/, /AGAMA/, /STATUS/, /PERKAWINAN/, 
-      /PEKERJAAN/, /KEWARGANEGARAAN/, /BERLAKU/, /HINGGA/, /GOL DARAH/
+      /^NIK$/, /^NAMA$/, /TEMPAT/, /TGL LAHIR/, /JENIS KELAMIN/, /^ALAMAT$/,
+      /^RT[\s\/]RW$/, /KEL[\s\/]DESA/, /KECAMATAN/, /^AGAMA$/, /STATUS PERKAWINAN/,
+      /^PEKERJAAN$/, /KEWARGANEGARAAN/, /BERLAKU HINGGA/, /GOL\.?\s*DARAH/,
+      /PROVINSI/, /KABUPATEN/, /KARTU TANDA PENDUDUK/, /REPUBLIK INDONESIA/,
     ];
 
-    console.log('OCR Raw Lines:', JSON.stringify(lines));
+    // Lines that cannot be a person's name
+    const isSkippable = (line) => {
+      const up = line.toUpperCase().trim();
+      if (up.length < 3) return true;
+      if (/^\d/.test(up)) return true;                          // starts with digit (NIK / date)
+      if (/^[:\-]/.test(up)) return true;                      // starts with colon or dash (value prefix)
+      if (/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(up)) return true;  // contains date pattern
+      if (nik && up.includes(nik)) return true;                 // is the NIK line
+      if (labelPatterns.some(lp => lp.test(up))) return true;  // is a label
+      return false;
+    };
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].toUpperCase().trim();
-      
-      // If we found NIK, only look for Nama after it (usually same line or next)
-      if (nikLineIndex !== -1 && i < nikLineIndex) continue;
+    let fullName = '';
 
-      // Skip headers
-      if (headerWords.some(hw => line.includes(hw))) continue;
-
-      // SPECIFIC NAMA SEARCH (Highest Priority)
-      if (line.includes('NAMA')) {
-        // 1. Check current line (after NAMA or colon)
-        let afterNama = line.split('NAMA').pop();
-        if (afterNama.includes(':')) {
-           afterNama = afterNama.split(':').pop();
-        }
-        
-        let candidate = afterNama.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
-        
-        // 2. If current line is empty or just label, search up to 10 next lines
-        if (candidate.length < 3) {
-          for (let j = 1; j <= 10 && i + j < lines.length; j++) {
-            const nextLine = lines[i+j].toUpperCase().trim();
-            const nextIsLabel = labelPatterns.some(lp => lp.test(nextLine));
-            const nextIsHeader = headerWords.some(hw => nextLine.includes(hw));
-            const nextIsNik = nextLine.includes(nik) || /^\d{16}$/.test(nextLine.replace(/\s/g, ''));
-
-            if (!nextIsLabel && !nextIsHeader && !nextIsNik) {
-              candidate = nextLine.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
-              if (candidate.length >= 3) break;
-            }
-          }
-        }
-
-        if (candidate.length >= 3 && !labelPatterns.some(lp => lp.test(candidate))) {
+    // ── Strategy 1: Birth-date anchor ────────────────────────────────────────
+    // Indonesian KTP always has "Tempat/Tgl Lahir: CITY, DD-MM-YYYY"
+    // OCR splits this so the name appears on the line immediately before
+    // the "CITY, DD-MM-YYYY" birth-date value line.
+    const birthDateIdx = lines.findIndex(l =>
+      /[A-Z\s]+,\s*\d{2}-\d{2}-\d{4}/i.test(l)
+    );
+    if (birthDateIdx > 0) {
+      for (let k = birthDateIdx - 1; k >= 0; k--) {
+        const candidate = lines[k].toUpperCase().trim().replace(/[^A-Z\s]/g, '').trim();
+        if (candidate.length >= 3 && !isSkippable(lines[k])) {
           fullName = candidate;
           break;
         }
       }
     }
 
-    // fallback: if still empty, search for anything after NIK that isn't a label
-    if (fullName === '' && nikLineIndex !== -1) {
-      for (let i = nikLineIndex + 1; i < lines.length; i++) {
-        const line = lines[i].toUpperCase().trim();
-        const isLabel = labelPatterns.some(lp => lp.test(line));
-        const isHeader = headerWords.some(hw => line.includes(hw));
-        const isNik = line.includes(nik) || /^\d{16}$/.test(line.replace(/\s/g, ''));
-        
-        if (!isLabel && !isHeader && !isNik) {
-          const candidate = line.replace(/[^A-Z\s]/g, ' ').replace(/\s+/g, ' ').trim();
-          if (candidate.length >= 3) {
-            fullName = candidate;
-            break;
+    // ── Strategy 2: "Nama" label lookahead ───────────────────────────────────
+    // Find the "Nama" label (anywhere in rawLines) and look up to 10 lines ahead
+    // for the first non-label, non-location candidate.
+    if (!fullName) {
+      const namaIdx = lines.findIndex(l => /^NAMA$/i.test(l.trim()) || /^NAMA\s*:/i.test(l.trim()));
+      if (namaIdx !== -1) {
+        // Check same line first (e.g. "Nama : DANIEL ANDREW")
+        const afterColon = lines[namaIdx].split(':').pop().trim();
+        const inlineCandidate = afterColon.toUpperCase().replace(/[^A-Z\s]/g, '').trim();
+        if (inlineCandidate.length >= 3 && !isSkippable(inlineCandidate)) {
+          fullName = inlineCandidate;
+        } else {
+          // Look at subsequent lines
+          for (let j = 1; j <= 10 && namaIdx + j < lines.length; j++) {
+            const next = lines[namaIdx + j];
+            if (!isSkippable(next)) {
+              fullName = next.toUpperCase().replace(/[^A-Z\s]/g, '').trim();
+              if (fullName.length >= 3) break;
+              fullName = '';
+            }
+          }
+        }
+      }
+    }
+
+    // ── Strategy 3: Fallback after NIK line ──────────────────────────────────
+    // Scan every line after the NIK value line; pick first plausible name.
+    if (!fullName && nik) {
+      const nikLineIndex = lines.findIndex(l => l.includes(nik));
+      if (nikLineIndex !== -1) {
+        for (let i = nikLineIndex + 1; i < lines.length; i++) {
+          if (!isSkippable(lines[i])) {
+            const candidate = lines[i].toUpperCase().replace(/[^A-Z\s]/g, '').trim();
+            if (candidate.length >= 3) {
+              fullName = candidate;
+              break;
+            }
           }
         }
       }
