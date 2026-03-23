@@ -48,6 +48,7 @@ export default function Payments() {
   const [editTransferPic, setEditTransferPic] = useState('');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [receiptPopupUrl, setReceiptPopupUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Bulk Selection State
@@ -976,16 +977,31 @@ export default function Payments() {
                       <div className="space-y-1 text-sm text-amber-900">
                         <div><span className="font-semibold">PIC:</span> {sub.transferpic}</div>
                         <div><span className="font-semibold">Amount:</span> Rp {Number(sub.amount).toLocaleString('id-ID')}</div>
-                        <div className="mt-2 text-center">
-                          <a 
-                            href={sub.receiptUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium"
-                          >
-                            <ExternalLink className="w-3 h-3 mr-1" /> View Receipt
-                          </a>
-                        </div>
+                        {sub.receiptUrl && (
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              onClick={() => setReceiptPopupUrl(sub.receiptUrl)}
+                              className="w-full group relative overflow-hidden rounded-lg border border-amber-200 hover:border-indigo-400 transition-colors"
+                            >
+                              {sub.receiptUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                                <img
+                                  src={sub.receiptUrl}
+                                  alt="Receipt"
+                                  className="w-full h-24 object-cover group-hover:opacity-80 transition-opacity"
+                                />
+                              ) : (
+                                <div className="w-full h-24 bg-amber-100 flex flex-col items-center justify-center gap-1 group-hover:bg-amber-200 transition-colors">
+                                  <ExternalLink className="w-5 h-5 text-amber-600" />
+                                  <span className="text-xs text-amber-700 font-medium">View Receipt</span>
+                                </div>
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                <span className="text-white text-xs font-bold bg-black/50 px-2 py-1 rounded">Klik untuk perbesar</span>
+                              </div>
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -1101,6 +1117,29 @@ export default function Payments() {
           </div>
         )}
       </div>
+      {/* Receipt Popup */}
+      {receiptPopupUrl && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-slate-900/80" onClick={() => setReceiptPopupUrl(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <ExternalLink className="w-4 h-4 text-indigo-600" /> Bukti Transfer
+              </h2>
+              <button onClick={() => setReceiptPopupUrl(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {receiptPopupUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                <img src={receiptPopupUrl} alt="Receipt" className="w-full rounded-lg object-contain max-h-[70vh]" />
+              ) : (
+                <iframe src={receiptPopupUrl} className="w-full h-[70vh] rounded-lg" title="Receipt Document" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
