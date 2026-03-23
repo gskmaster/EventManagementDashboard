@@ -23,7 +23,9 @@ import {
   ImageIcon,
   User,
   Clock,
+  ExternalLink,
 } from 'lucide-react';
+import PreviewModal from '../../components/PreviewModal';
 
 type View = 'projects' | 'list' | 'create' | 'detail';
 
@@ -65,6 +67,7 @@ export default function EventReport() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editorKey, setEditorKey] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [form, setForm] = useState<FormState>({
     date: new Date().toISOString().split('T')[0],
@@ -645,19 +648,17 @@ export default function EventReport() {
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {selectedReport.photoUrls.map((url, idx) => (
-                    <a
+                    <button
                       key={idx}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block aspect-square rounded-2xl overflow-hidden border border-slate-100 hover:opacity-90 transition-opacity"
+                      onClick={() => setPreviewUrl(url)}
+                      className="block aspect-square rounded-2xl overflow-hidden border border-slate-100 hover:opacity-90 transition-opacity text-left outline-none"
                     >
                       <img
                         src={url}
                         alt={`foto ${idx + 1}`}
                         className="w-full h-full object-cover"
                       />
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -666,6 +667,12 @@ export default function EventReport() {
         </div>
 
         {ToastEl}
+
+        <PreviewModal 
+          url={previewUrl} 
+          onClose={() => setPreviewUrl(null)} 
+          title="Preview Foto Kegiatan"
+        />
       </div>
     );
   }

@@ -23,6 +23,7 @@ import {
   FileCheck,
   ExternalLink,
 } from 'lucide-react';
+import PreviewModal from '../../components/PreviewModal';
 
 interface LiaisonOfficer {
   id: string;
@@ -67,6 +68,7 @@ export default function KwitansiManagement() {
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'all' | 'uploaded' | 'missing'>('all');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingPersonIdRef = useRef<string | null>(null);
@@ -425,16 +427,14 @@ export default function KwitansiManagement() {
                           <td className="px-5 py-4 text-slate-500">{person.mobilePhone}</td>
                           <td className="px-5 py-4">
                             {kwitansi ? (
-                              <a
-                                href={kwitansi.kwitansiUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                onClick={() => setPreviewUrl(kwitansi.kwitansiUrl)}
                                 className="inline-flex items-center gap-1.5 text-green-600 font-medium text-xs hover:underline"
                               >
                                 <Check className="w-3.5 h-3.5" />
                                 Sudah diunggah
                                 <ExternalLink className="w-3 h-3" />
-                              </a>
+                              </button>
                             ) : (
                               <span className="inline-flex items-center gap-1.5 text-slate-400 text-xs">
                                 Belum ada kwitansi
@@ -494,16 +494,14 @@ export default function KwitansiManagement() {
                         <p className="text-xs text-slate-500 mt-0.5">NIK: {person.nik}</p>
                         <p className="text-xs text-slate-400">{person.mobilePhone}</p>
                         {kwitansi && (
-                          <a
-                            href={kwitansi.kwitansiUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() => setPreviewUrl(kwitansi.kwitansiUrl)}
                             className="inline-flex items-center gap-1 mt-1.5 text-xs text-green-600 font-medium"
                           >
                             <Check className="w-3 h-3" />
                             Kwitansi diunggah
                             <ExternalLink className="w-3 h-3 ml-0.5" />
-                          </a>
+                          </button>
                         )}
                       </div>
                       <button
@@ -545,6 +543,13 @@ export default function KwitansiManagement() {
         accept="image/*,application/pdf"
         className="hidden"
         onChange={handleFileChange}
+      />
+
+      {/* Preview Modal */}
+      <PreviewModal 
+        url={previewUrl} 
+        onClose={() => setPreviewUrl(null)} 
+        title="Preview Kwitansi"
       />
 
       {/* Toast */}

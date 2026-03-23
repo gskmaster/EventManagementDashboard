@@ -454,10 +454,11 @@ service cloud.firestore {
     // Document ID convention: {projectId}_{personId}
     match /team_payments/{paymentId} {
       allow read: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isTaxAdmin());
-      allow create: if isAuthenticated() && (isAdmin() || isEventManager()) &&
+      allow create: if isAuthenticated() && (isAdmin() || isEventManager() || isFinance() || isTaxAdmin()) &&
                        request.resource.data.projectId is string &&
                        request.resource.data.personId is string &&
-                       request.resource.data.personType in ['usher', 'lo', 'speaker'] &&
+                       request.resource.data.personName is string &&
+                       request.resource.data.personType in ['usher', 'lo', 'speaker', 'participant'] &&
                        request.resource.data.amount is number &&
                        request.resource.data.taxRate is number &&
                        request.resource.data.taxAmount is number &&

@@ -15,6 +15,7 @@ import {
   Loader2, Save, X, Receipt, CheckCircle2, XCircle, Mail, Send,
   Calendar, MapPin, Building2, User, ChevronLeft, ChevronRight, FileSpreadsheet,
 } from 'lucide-react';
+import PreviewModal from '../components/PreviewModal';
 
 type TaxTab = 'speakers' | 'ushers' | 'liaisons' | 'peserta';
 type PersonType = 'speaker' | 'usher' | 'lo' | 'participant';
@@ -104,6 +105,9 @@ export default function TaxDetail() {
   // Pagination
   const [taxPage, setTaxPage] = useState(1);
   const [taxPageSize, setTaxPageSize] = useState(10);
+
+  // Preview modal
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => { fetchData(); }, [projectId]);
   useEffect(() => { setSelectedEmailIds(new Set()); setTaxPage(1); }, [activeTab, taxCategory]);
@@ -644,20 +648,20 @@ export default function TaxDetail() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           {tp?.buktiPotong ? (
-                            <a href={tp.buktiPotong} target="_blank" rel="noreferrer"
+                            <button onClick={() => setPreviewUrl(tp.buktiPotong)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-full transition-colors">
                               <ExternalLink className="w-3 h-3" /> Lihat
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-[11px] text-amber-600 font-medium">Belum ada</span>
                           )}
                         </td>
                         <td className="px-6 py-4 text-center">
                           {tp?.kwitansi ? (
-                            <a href={tp.kwitansi} target="_blank" rel="noreferrer"
+                            <button onClick={() => setPreviewUrl(tp.kwitansi)}
                               className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-full transition-colors">
                               <ExternalLink className="w-3 h-3" /> Lihat
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-[11px] text-amber-600 font-medium">Belum ada</span>
                           )}
@@ -737,20 +741,20 @@ export default function TaxDetail() {
                             <td className="px-6 py-4 text-sm text-slate-700">{desa.desa}</td>
                             <td className="px-6 py-4 text-center">
                               {idBilling ? (
-                                <a href={idBilling} target="_blank" rel="noreferrer"
+                                <button onClick={() => setPreviewUrl(idBilling)}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-full transition-colors">
                                   <ExternalLink className="w-3 h-3" /> Lihat
-                                </a>
+                                </button>
                               ) : (
                                 <span className="text-[11px] text-amber-600 font-medium">Belum ada</span>
                               )}
                             </td>
                             <td className="px-6 py-4 text-center">
                               {bupot ? (
-                                <a href={bupot} target="_blank" rel="noreferrer"
+                                <button onClick={() => setPreviewUrl(bupot)}
                                   className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-full transition-colors">
                                   <ExternalLink className="w-3 h-3" /> Lihat
-                                </a>
+                                </button>
                               ) : (
                                 <span className="text-[11px] text-amber-600 font-medium">Belum ada</span>
                               )}
@@ -847,10 +851,10 @@ export default function TaxDetail() {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">Bukti Potong</label>
                   {existingTP?.buktiPotong && !buktiPotongFile && (
-                    <a href={existingTP.buktiPotong} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5">
+                    <button onClick={() => setPreviewUrl(existingTP.buktiPotong)}
+                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5 focus:outline-none">
                       <ExternalLink className="w-3 h-3" /> Lihat file saat ini
-                    </a>
+                    </button>
                   )}
                   <label className="flex items-center gap-2 w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 hover:border-teal-400 hover:text-teal-600 cursor-pointer transition-colors">
                     <FileUp className="w-3.5 h-3.5 flex-shrink-0" />
@@ -866,10 +870,10 @@ export default function TaxDetail() {
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">Kwitansi</label>
                   {existingTP?.kwitansi && !kwitansiFile && (
-                    <a href={existingTP.kwitansi} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5">
+                    <button onClick={() => setPreviewUrl(existingTP.kwitansi)}
+                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5 focus:outline-none">
                       <ExternalLink className="w-3 h-3" /> Lihat file saat ini
-                    </a>
+                    </button>
                   )}
                   <label className="flex items-center gap-2 w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 hover:border-teal-400 hover:text-teal-600 cursor-pointer transition-colors">
                     <FileUp className="w-3.5 h-3.5 flex-shrink-0" />
@@ -922,10 +926,10 @@ export default function TaxDetail() {
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">ID Billing File</label>
                   {desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`] && 
                    (taxCategory === 'pph23' ? desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].idBillingPph23 : desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].idBillingPpn) && !idBillingFile && (
-                    <a href={taxCategory === 'pph23' ? desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].idBillingPph23 : desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].idBillingPpn} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5">
+                    <button onClick={() => setPreviewUrl(taxCategory === 'pph23' ? desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].idBillingPph23 : desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].idBillingPpn)}
+                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5 focus:outline-none">
                       <ExternalLink className="w-3 h-3" /> Lihat file saat ini
-                    </a>
+                    </button>
                   )}
                   <label className="flex items-center gap-2 w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 hover:border-teal-400 hover:text-teal-600 cursor-pointer transition-colors">
                     <FileUp className="w-3.5 h-3.5 flex-shrink-0" />
@@ -942,10 +946,10 @@ export default function TaxDetail() {
                   <label className="block text-xs font-medium text-slate-700 mb-1.5">{taxCategory === 'pph23' ? 'Bupot PPh 23' : 'Bupot PPN'}</label>
                   {desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`] && 
                    (taxCategory === 'pph23' ? desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].bupotPph23 : desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].bupotPpn) && !bupotDesaFile && (
-                    <a href={taxCategory === 'pph23' ? desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].bupotPph23 : desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].bupotPpn} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5">
+                    <button onClick={() => setPreviewUrl(taxCategory === 'pph23' ? desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].bupotPph23 : desaTaxes[`${editingDesa.kecamatan}_${editingDesa.desa}`].bupotPpn)}
+                      className="flex items-center gap-1 text-[11px] text-teal-600 hover:underline mb-1.5 focus:outline-none">
                       <ExternalLink className="w-3 h-3" /> Lihat file saat ini
-                    </a>
+                    </button>
                   )}
                   <label className="flex items-center gap-2 w-full px-3 py-2 border border-dashed border-slate-300 rounded-lg text-xs text-slate-500 hover:border-teal-400 hover:text-teal-600 cursor-pointer transition-colors">
                     <FileUp className="w-3.5 h-3.5 flex-shrink-0" />
@@ -1196,6 +1200,11 @@ export default function TaxDetail() {
           </div>
         </div>
       )}
+      {/* ── Preview Modal ────────────────────────────────────────── */}
+      <PreviewModal 
+        url={previewUrl} 
+        onClose={() => setPreviewUrl(null)} 
+      />
     </Layout>
   );
 }
