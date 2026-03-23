@@ -64,14 +64,33 @@ export default function PublicRegistration() {
     fetchProject();
   }, [projectId]);
 
+  const NIK_REGEX = /^\d{16}$/;
+  const PHONE_REGEX = /^(62|0)8[1-9][0-9]{7,10}$/;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'nik') {
+      setFormData({ ...formData, nik: value.replace(/\D/g, '').slice(0, 16) });
+    } else if (name === 'mobilePhone') {
+      setFormData({ ...formData, mobilePhone: value.replace(/\D/g, '') });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId) return;
-    
+
+    if (!NIK_REGEX.test(formData.nik)) {
+      setError('NIK harus terdiri dari 16 digit angka.');
+      return;
+    }
+    if (!PHONE_REGEX.test(formData.mobilePhone)) {
+      setError('Nomor HP tidak valid. Gunakan format: 08xx atau 628xx.');
+      return;
+    }
+
     if (!formData.kecamatan || !formData.desa) {
       setError('Silakan pilih Kecamatan dan Desa.');
       return;
@@ -280,10 +299,13 @@ export default function PublicRegistration() {
                   type="text"
                   name="nik"
                   required
+                  inputMode="numeric"
+                  maxLength={16}
+                  minLength={16}
                   value={formData.nik}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Nomor Induk Kependudukan"
+                  placeholder="16 digit nomor KTP"
                 />
               </div>
 
@@ -307,13 +329,14 @@ export default function PublicRegistration() {
                   No HP <span className="text-red-500">*</span>
                 </label>
                 <input
-                  type="tel"
+                  type="text"
                   name="mobilePhone"
                   required
+                  inputMode="numeric"
                   value={formData.mobilePhone}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Nomor Handphone"
+                  placeholder="Contoh: 08123456789"
                 />
               </div>
 

@@ -27,10 +27,24 @@ export default function PublicLORegistration() {
   const [consentGiven, setConsentGiven] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
+  const NIK_REGEX = /^\d{16}$/;
+  const PHONE_REGEX = /^(62|0)8[1-9][0-9]{7,10}$/;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
+
+    if (!NIK_REGEX.test(formData.nik)) {
+      setError('NIK harus terdiri dari 16 digit angka.');
+      setSubmitting(false);
+      return;
+    }
+    if (!PHONE_REGEX.test(formData.mobilePhone)) {
+      setError('Nomor HP tidak valid. Gunakan format: 08xx atau 628xx.');
+      setSubmitting(false);
+      return;
+    }
 
     try {
       // Periksa email unik menggunakan Cloud Function secara aman
@@ -140,9 +154,9 @@ export default function PublicLORegistration() {
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       NIK (Nomor Induk Kependudukan) <span className="text-red-500">*</span>
                     </label>
-                    <input type="text" required maxLength={16}
+                    <input type="text" required inputMode="numeric" maxLength={16} minLength={16}
                       value={formData.nik}
-                      onChange={(e) => setFormData({ ...formData, nik: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, nik: e.target.value.replace(/\D/g, '').slice(0, 16) })}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       placeholder="16 digit nomor KTP"
                     />
@@ -152,9 +166,9 @@ export default function PublicLORegistration() {
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Nomor Handphone <span className="text-red-500">*</span>
                     </label>
-                    <input type="tel" required
+                    <input type="text" required inputMode="numeric"
                       value={formData.mobilePhone}
-                      onChange={(e) => setFormData({ ...formData, mobilePhone: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, mobilePhone: e.target.value.replace(/\D/g, '') })}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       placeholder="Contoh: 08123456789"
                     />
