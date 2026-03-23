@@ -20,6 +20,7 @@
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const vision = require('@google-cloud/vision');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -165,4 +166,51 @@ exports.checkUniqueUser = functions.https.onCall(async (data, context) => {
   }
 
   return { isUnique: true };
+});
+
+/**
+ * extractKTPData — HTTPS callable (public, no auth required)
+ *
+ * Receives a base64-encoded KTP image, runs Google Cloud Vision OCR,
+ * and parses the Indonesian ID card fields: NIK (16 digits) and Nama.
+ *
+ * Input:  { imageBase64: string }
+ * Output: { nik: string, fullName: string }
+ */
+exports.extractKTPData = functions.https.onCall(async (data, context) => {
+  const { imageBase64 } = data;
+
+  if (!imageBase64 || typeof imageBase64 !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'imageBase64 is required.');
+  }
+
+  // Guard: ~5MB max (base64 inflates ~33%)
+  if (imageBase64.length > 7 * 1024 * 1024) {
+    throw new functions.https.HttpsError('invalid-argument', 'Image too large. Max 5MB.');
+  }
+
+  const client = new vision.ImageAnnotatorClient();
+  const [result] = await client.documentTextDetection({
+    image: { content: imageBase64 },
+  });
+
+  const fullText = result.fullTextAnnotation?.text || '';
+
+  // NIK: first standalone 16-digit sequence
+  const nikMatch = fullText.match(/\b(\d{16})\b/);
+  const nik = nikMatch ? nikMatch[1] : '';
+
+  // Nama: text on the line containing "Nama" keyword (handles "Nama :", "NAMA:")
+  const lines = fullText.split('\n');
+  let fullName = '';
+  for (const line of lines) {
+    const namaMatch = line.match(/[Nn][Aa][Mm][Aa]\s*[:\s]\s*(.+)/);
+    if (namaMatch) {
+      // Strip non-letter characters (digits, punctuation) from name
+      fullName = namaMatch[1].trim().replace(/[^A-Za-z\s]/g, '').trim();
+      if (fullName.length > 1) break;
+    }
+  }
+
+  return { nik, fullName };
 });

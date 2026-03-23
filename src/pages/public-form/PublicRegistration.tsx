@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import { Calendar, MapPin, User, CheckCircle2, FileText, Loader2 } from 'lucide-react';
 import Select from 'react-select';
 import { locations } from '../../data/locations';
+import KTPScanButton from '../../components/KTPScanButton';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
 import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
 import { logConsent } from '../../lib/consentLogger';
@@ -291,6 +292,12 @@ export default function PublicRegistration() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              <KTPScanButton
+                accentColor="indigo"
+                onExtracted={({ nik, fullName }) =>
+                  setFormData(prev => ({ ...prev, nik, fullName }))
+                }
+              />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   NIK <span className="text-red-500">*</span>

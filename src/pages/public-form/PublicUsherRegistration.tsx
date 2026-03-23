@@ -4,6 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { db, storage, functions } from '../../firebase';
 import { CheckCircle2, FileText, Loader2, UserCheck } from 'lucide-react';
+import KTPScanButton from '../../components/KTPScanButton';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
 import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
 import { logConsent } from '../../lib/consentLogger';
@@ -137,6 +138,12 @@ export default function PublicUsherRegistration() {
               {/* Data Diri */}
               <div>
                 <h3 className="text-sm font-bold text-slate-800 mb-3">Data Diri</h3>
+                <KTPScanButton
+                  accentColor="violet"
+                  onExtracted={({ nik, fullName }) =>
+                    setFormData(prev => ({ ...prev, nik, fullName }))
+                  }
+                />
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
