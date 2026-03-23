@@ -76,7 +76,7 @@ export default function KTPScanButton({ onExtracted, accentColor = 'indigo' }: P
       const ktpUrl = await getDownloadURL(uploadResult.ref);
 
       // 2. Run OCR via Cloud Function
-      const url = getFunctionUrl('extractKTPDataV3'); // Use V3 as confirmed
+      const url = getFunctionUrl('extractKTPData'); // getFunctionUrl already appends 'V3'
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
