@@ -34,7 +34,7 @@ const POLICY_VERSION = '1.0';
  * Captures real IP address from the HTTP request and writes immutable records
  * to both `user_consents` and `audit_logs` Firestore collections.
  */
-exports.logUserConsent = functions.https.onRequest(async (req, res) => {
+exports.logUserConsentHttp = functions.region('asia-southeast2').https.onRequest(async (req, res) => {
   // Allow CORS from any origin (public forms are on external domains)
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -146,7 +146,7 @@ exports.verifyAuditIntegrity = functions.https.onCall(async (data, context) => {
  * Securely checks if an email or phone number already exists in
  * the specified collection without exposing the collection data.
  */
-exports.checkUniqueUser = functions.https.onRequest(async (req, res) => {
+exports.checkUniqueUserHttp = functions.region('asia-southeast2').https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
@@ -196,7 +196,7 @@ exports.checkUniqueUser = functions.https.onRequest(async (req, res) => {
  * Receives a base64-encoded KTP image, runs Google Cloud Vision OCR,
  * and parses the Indonesian ID card fields: NIK (16 digits) and Nama.
  */
-exports.extractKTPData = functions.https.onRequest(async (req, res) => {
+exports.extractKTPDataHttp = functions.region('asia-southeast2').https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
