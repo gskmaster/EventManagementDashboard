@@ -9,6 +9,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { user, profile, logout } = useAuth();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [cpCurrentPassword, setCpCurrentPassword] = useState('');
@@ -198,37 +199,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </>
           )}
         </div>
-
-        {/* User Footer */}
-        <div className="p-3 border-t border-slate-200">
-          <div className="flex items-center mb-2 px-2">
-            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm mr-2.5 flex-shrink-0">
-              {(profile?.displayName || profile?.email || 'U').charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
-                {profile?.displayName || 'Pengguna'}
-              </p>
-              <p className="text-xs text-slate-500 truncate capitalize">
-                {profile?.role?.replace('_', ' ')}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={openChangePassword}
-            className="w-full flex items-center px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-lg transition-colors mb-1"
-          >
-            <Lock className="w-4 h-4 mr-2.5 text-slate-400" />
-            Ganti Kata Sandi
-          </button>
-          <button
-            onClick={logout}
-            className="w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4 mr-2.5" />
-            Keluar
-          </button>
-        </div>
       </div>
 
       {/* Change Password Modal */}
@@ -323,9 +293,67 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="w-6 h-6" />
           </button>
-          <h1 className="text-lg font-semibold text-slate-800 truncate">
+          <h1 className="text-lg font-semibold text-slate-800 truncate flex-1">
             {currentPageLabel}
           </h1>
+
+          {/* User Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+              className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-sm">
+                {(profile?.displayName || profile?.email || 'U').charAt(0).toUpperCase()}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-semibold text-slate-900 leading-none mb-0.5">
+                  {profile?.displayName || 'Pengguna'}
+                </p>
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider leading-none">
+                  {profile?.role?.replace('_', ' ')}
+                </p>
+              </div>
+              <Menu className={`w-4 h-4 text-slate-400 transition-transform ${isProfileDropdownOpen ? 'rotate-90' : ''}`} />
+            </button>
+
+            {isProfileDropdownOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsProfileDropdownOpen(false)} 
+                />
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 transform origin-top-right transition-all animate-in fade-in zoom-in duration-200">
+                  <div className="px-4 py-3 border-b border-slate-100 sm:hidden">
+                    <p className="text-sm font-bold text-slate-900 truncate">
+                      {profile?.displayName || 'Pengguna'}
+                    </p>
+                    <p className="text-xs text-slate-500 truncate capitalize">
+                      {profile?.role?.replace('_', ' ')}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                        openChangePassword();
+                        setIsProfileDropdownOpen(false);
+                    }}
+                    className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <Lock className="w-4 h-4 mr-3 text-slate-400" />
+                    Ganti Kata Sandi
+                  </button>
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    onClick={logout}
+                    className="w-full flex items-center px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4 mr-3" />
+                    Keluar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </header>
         <main className="flex-1 p-4 sm:p-8">
           {children}
