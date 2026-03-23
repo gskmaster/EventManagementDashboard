@@ -42,6 +42,7 @@ jobs:
             --build-arg VITE_FIREBASE_FIRESTORE_DATABASE_ID="${{ secrets.VITE_FIREBASE_FIRESTORE_DATABASE_ID }}" \
             --build-arg VITE_RECAPTCHA_SITE_KEY="${{ secrets.VITE_RECAPTCHA_SITE_KEY }}" \
             --build-arg VITE_GOOGLE_MAPS_API_KEY="${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}" \
+            --build-arg VITE_FIREBASE_REGION="${{ secrets.VITE_FIREBASE_REGION || 'asia-southeast2' }}" \
             --build-arg VITE_CONSENT_FUNCTION_URL="${{ secrets.VITE_CONSENT_FUNCTION_URL }}" \
             -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
           docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ github.sha }}

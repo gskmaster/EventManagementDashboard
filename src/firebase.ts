@@ -28,7 +28,11 @@ export const db = import.meta.env.DEV
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
+
+// Use a specific region for Cloud Functions (defaulting to Indonesia/Jakarta for GSK projects)
+// This fixes CORS preflight issues when functions are not in us-central1.
+const region = import.meta.env.VITE_FIREBASE_REGION || 'asia-southeast2';
+export const functions = getFunctions(app, region);
 
 // Initialize Analytics conditionally (it requires measurementId and a browser context)
 // We also disable it in DEV mode because Firebase Analytics does not have a local emulator
