@@ -352,7 +352,7 @@ service cloud.firestore {
                        (
                          isAdmin() ||
                          isEventManager() ||
-                         ((isLO() || isUsher()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus'])) ||
+                         ((isLO() || isUsher()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['attendanceStatus', 'fullName', 'nik', 'mobilePhone', 'email', 'posisi', 'posisiLainnya'])) ||
                          (resource.data.userId == request.auth.uid && request.resource.data.attendanceStatus == resource.data.attendanceStatus)
                        );
                        
