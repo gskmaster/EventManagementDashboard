@@ -802,7 +802,7 @@ export default function Attendance() {
                         <option value="">Pilih posisi...</option>
                         <option value="Ketua Koperas">Ketua Koperas</option>
                         <option value="Bendahara Koperasi">Bendahara Koperasi</option>
-                        <option value="Pengawas Koperasi">Pengawas Koperasi</option>
+                        <option value="Sekretaris Koperasi">Sekretaris Koperasi</option>
                         <option value="Anggota Koperasi">Anggota Koperasi</option>
                         <option value="Lainnya">Lainnya</option>
                       </select>

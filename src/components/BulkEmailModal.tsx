@@ -27,14 +27,18 @@ interface Props {
   isSending: boolean;
   sendProgress: { current: number; total: number };
   variables: { label: string; value: string }[];
+  mode?: 'tax' | 'certificate';
 }
 
 export default function BulkEmailModal({
   isOpen, onClose, title, recipients, templates,
-  onShowPreview, onSendBatch, isSending, sendProgress, variables
+  onShowPreview, onSendBatch, isSending, sendProgress, variables,
+  mode = 'tax',
 }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'with-file' | 'complete' | 'failed'>('with-file');
+  const [filterType, setFilterType] = useState<'all' | 'with-file' | 'complete' | 'failed'>(
+    mode === 'certificate' ? 'all' : 'with-file'
+  );
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -44,21 +48,22 @@ export default function BulkEmailModal({
   // Filter recipients
   const filteredRecipients = useMemo(() => {
     return recipients.filter(r => {
-      const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            r.email.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       let matchesFilter = true;
-      if (filterType === 'with-file') {
-        matchesFilter = r.hasFile || !!r.hasKwitansi;
-      } else if (filterType === 'complete') {
-        matchesFilter = r.hasFile && !!r.hasKwitansi;
-      } else if (filterType === 'failed') {
-        matchesFilter = r.emailStatus === 'failed';
+      if (mode === 'certificate') {
+        if (filterType === 'complete') matchesFilter = r.hasFile;
+        else if (filterType === 'failed') matchesFilter = r.emailStatus === 'failed';
+      } else {
+        if (filterType === 'with-file') matchesFilter = r.hasFile || !!r.hasKwitansi;
+        else if (filterType === 'complete') matchesFilter = r.hasFile && !!r.hasKwitansi;
+        else if (filterType === 'failed') matchesFilter = r.emailStatus === 'failed';
       }
 
       return matchesSearch && matchesFilter;
     });
-  }, [recipients, searchTerm, filterType]);
+  }, [recipients, searchTerm, filterType, mode]);
 
   // Pagination
   const totalPages = Math.ceil(filteredRecipients.length / itemsPerPage);
@@ -161,7 +166,10 @@ export default function BulkEmailModal({
                 />
               </div>
               <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                {(['with-file', 'complete', 'all', 'failed'] as const).map(type => (
+                {(mode === 'certificate'
+                  ? (['all', 'complete', 'failed'] as const)
+                  : (['with-file', 'complete', 'all', 'failed'] as const)
+                ).map(type => (
                   <button
                     key={type}
                     onClick={() => { setFilterType(type); setCurrentPage(1); }}
@@ -209,26 +217,38 @@ export default function BulkEmailModal({
                         <div className="text-xs text-slate-400 font-medium">{r.email}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1.5">
-                          {r.hasFile ? (
+                        {mode === 'certificate' ? (
+                          r.hasFile ? (
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase border border-emerald-100">
-                              <CheckCircle2 className="w-2.5 h-2.5" /> Bupot
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Sertifikat
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase border border-rose-100">
-                              <AlertCircle className="w-2.5 h-2.5" /> Bupot
+                              <AlertCircle className="w-2.5 h-2.5" /> Belum Generate
                             </span>
-                          )}
-                          {r.hasKwitansi ? (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase border border-emerald-100">
-                              <CheckCircle2 className="w-2.5 h-2.5" /> Kwitansi
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase border border-rose-100">
-                              <AlertCircle className="w-2.5 h-2.5" /> Kwitansi
-                            </span>
-                          )}
-                        </div>
+                          )
+                        ) : (
+                          <div className="flex flex-wrap gap-1.5">
+                            {r.hasFile ? (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase border border-emerald-100">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Bupot
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase border border-rose-100">
+                                <AlertCircle className="w-2.5 h-2.5" /> Bupot
+                              </span>
+                            )}
+                            {r.hasKwitansi ? (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase border border-emerald-100">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Kwitansi
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase border border-rose-100">
+                                <AlertCircle className="w-2.5 h-2.5" /> Kwitansi
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {r.emailStatus === 'sent' ? (

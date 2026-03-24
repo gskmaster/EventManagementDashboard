@@ -695,6 +695,7 @@ export default function CertificateDetail() {
       <BulkEmailModal
         isOpen={bulkEmailOpen}
         onClose={() => setBulkEmailOpen(false)}
+        mode="certificate"
         title="Kirim Email Sertifikat Massal"
         recipients={persons.map(p => ({
           id: p.id,

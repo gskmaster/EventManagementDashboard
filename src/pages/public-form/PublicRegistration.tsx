@@ -414,7 +414,7 @@ export default function PublicRegistration() {
                   options={[
                     { value: 'Ketua Koperasi', label: 'Ketua Koperasi' },
                     { value: 'Bendahara Koperasi', label: 'Bendahara Koperasi' },
-                    { value: 'Pengawas Koperasi', label: 'Pengawas Koperasi' },
+                    { value: 'Sekretaris Koperasi', label: 'Sekretaris Koperasi' },
                     { value: 'Lainnya', label: 'Lainnya' }
                   ]}
                   value={formData.posisi ? { value: formData.posisi, label: formData.posisi } : null}
