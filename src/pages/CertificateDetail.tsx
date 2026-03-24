@@ -10,11 +10,13 @@ import Layout from '../components/Layout';
 import CertificateDesignModal, {
   CertDesign, DEFAULT_CERT_DESIGN,
 } from '../components/CertificateDesignModal';
+import BulkEmailModal from '../components/BulkEmailModal';
+import { sendBatchEmail } from '../lib/sendTemplateEmail';
 import jsPDF from 'jspdf';
 import {
   ArrowLeft, Award, Download, Mail, Loader2,
   CheckCircle2, Search, Calendar, MapPin, Building2, Palette,
-  CheckSquare, Square,
+  CheckSquare, Square, Send,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -38,6 +40,7 @@ interface CertRecord {
   url: string;
   generatedAt: any;
   emailSentAt: any;
+  emailStatus?: 'sent' | 'failed' | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,6 +213,12 @@ export default function CertificateDetail() {
   // Design modal
   const [designModalOpen, setDesignModalOpen] = useState(false);
 
+  // Bulk email modal
+  const [bulkEmailOpen, setBulkEmailOpen] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
+
   // ── Fetch all data ──────────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     if (!projectId) return;
@@ -232,6 +241,10 @@ export default function CertificateDetail() {
       const certMap: Record<string, CertRecord> = {};
       certsSnap.docs.forEach(d => { const data = d.data() as CertRecord; certMap[data.personId] = data; });
       setCerts(certMap);
+
+      // Fetch email templates
+      const tmplSnap = await getDocs(collection(db, 'EmailTemplates'));
+      setTemplates(tmplSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
       if (designSnap.exists()) {
         const d = designSnap.data();
@@ -381,6 +394,64 @@ export default function CertificateDetail() {
     setSelectedIds(new Set());
   };
 
+  // ── Bulk send email via modal ───────────────────────────────────────────────
+  const handleSendBatchEmail = async (selectedIds: string[], templateId: string, emailBody: string) => {
+    if (!project || !projectId) return;
+    const template = templates.find(t => t.id === templateId);
+    if (!template) return;
+
+    const recipients = selectedIds
+      .map(id => persons.find(p => p.id === id))
+      .filter((p): p is Person => !!p && !!certs[p.id]?.url && !!p.email)
+      .map(p => ({
+        id: `${projectId}_${p.id}`,
+        email: p.email,
+        collectionPath: 'certificates',
+        projectId,
+        variables: {
+          namaPeserta: p.fullName,
+          emailPeserta: p.email,
+          namaProyek: project.name,
+          tanggalMulai: project.startDate,
+          tanggalSelesai: project.endDate,
+          namaVenue: project.kabupaten,
+          linkSertifikat: certs[p.id]?.url || '',
+        },
+      }));
+
+    if (recipients.length === 0) return;
+
+    setIsSending(true);
+    setSendProgress({ current: 0, total: recipients.length });
+
+    await sendBatchEmail(
+      recipients,
+      { subject: template.subject, body: emailBody },
+      {
+        total: recipients.length,
+        current: 0,
+        onProgress: (n) => setSendProgress({ current: n, total: recipients.length }),
+        onSuccess: (id) => {
+          const personId = id.replace(`${projectId}_`, '');
+          setCerts(prev => ({
+            ...prev,
+            [personId]: { ...prev[personId], emailStatus: 'sent', emailSentAt: new Date() },
+          }));
+        },
+        onError: (id) => {
+          const personId = id.replace(`${projectId}_`, '');
+          setCerts(prev => ({
+            ...prev,
+            [personId]: { ...prev[personId], emailStatus: 'failed' },
+          }));
+        },
+      },
+      'emailStatus'
+    );
+
+    setIsSending(false);
+  };
+
   // ── Helpers ─────────────────────────────────────────────────────────────────
   const formatTs = (ts: any) => {
     if (!ts) return null;
@@ -425,6 +496,11 @@ export default function CertificateDetail() {
                   <div className="text-3xl font-bold">{persons.length}</div>
                   <div className="text-sm opacity-80">Peserta Hadir</div>
                 </div>
+                <button onClick={() => setBulkEmailOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white text-indigo-700 text-sm font-semibold rounded-lg hover:bg-indigo-50 transition-colors shadow-sm">
+                  <Send className="w-4 h-4" />
+                  Kirim Email Massal
+                </button>
                 <button onClick={() => setDesignModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm font-semibold rounded-lg transition-colors backdrop-blur-sm">
                   <Palette className="w-4 h-4" />
@@ -518,6 +594,7 @@ export default function CertificateDetail() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Posisi</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Sertifikat</th>
+                    <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Email Status</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Aksi</th>
                   </tr>
                 </thead>
@@ -551,17 +628,27 @@ export default function CertificateDetail() {
                         <td className="px-4 py-3 text-slate-600 text-xs">{person.email || '—'}</td>
                         <td className="px-4 py-3">
                           {cert?.url ? (
-                            <div>
-                              <a href={cert.url} target="_blank" rel="noreferrer"
-                                className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />Lihat PDF
-                              </a>
-                              {cert.emailSentAt && (
-                                <p className="text-[10px] text-slate-400 mt-0.5">Dikirim: {formatTs(cert.emailSentAt)}</p>
-                              )}
-                            </div>
+                            <a href={cert.url} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />Lihat PDF
+                            </a>
                           ) : (
                             <span className="text-xs text-slate-400">Belum digenerate</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {cert?.emailStatus === 'sent' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-bold uppercase tracking-wider border border-emerald-100">
+                              <CheckCircle2 className="w-2.5 h-2.5" /> Terkirim
+                            </span>
+                          ) : cert?.emailStatus === 'failed' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full text-[9px] font-bold uppercase tracking-wider border border-rose-100">
+                              Gagal
+                            </span>
+                          ) : cert?.emailSentAt ? (
+                            <span className="text-[10px] text-slate-400">{formatTs(cert.emailSentAt)}</span>
+                          ) : (
+                            <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">—</span>
                           )}
                         </td>
                         <td className="px-4 py-3">
@@ -603,6 +690,35 @@ export default function CertificateDetail() {
           onClose={() => setDesignModalOpen(false)}
         />
       )}
+
+      {/* Bulk email modal */}
+      <BulkEmailModal
+        isOpen={bulkEmailOpen}
+        onClose={() => setBulkEmailOpen(false)}
+        title="Kirim Email Sertifikat Massal"
+        recipients={persons.map(p => ({
+          id: p.id,
+          name: p.fullName,
+          email: p.email,
+          hasFile: !!certs[p.id]?.url,
+          emailStatus: certs[p.id]?.emailStatus ?? null,
+          variables: {},
+        }))}
+        templates={templates}
+        onShowPreview={() => {}}
+        onSendBatch={handleSendBatchEmail}
+        isSending={isSending}
+        sendProgress={sendProgress}
+        variables={[
+          { label: 'Nama Peserta', value: '{{namaPeserta}}' },
+          { label: 'Email Peserta', value: '{{emailPeserta}}' },
+          { label: 'Nama Proyek', value: '{{namaProyek}}' },
+          { label: 'Tanggal Mulai', value: '{{tanggalMulai}}' },
+          { label: 'Tanggal Selesai', value: '{{tanggalSelesai}}' },
+          { label: 'Lokasi', value: '{{namaVenue}}' },
+          { label: 'Link Sertifikat', value: '{{linkSertifikat}}' },
+        ]}
+      />
     </Layout>
   );
 }
