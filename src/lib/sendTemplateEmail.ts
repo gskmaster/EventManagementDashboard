@@ -74,17 +74,26 @@ interface BatchProgress {
  */
 function waitForEmailDelivery(docId: string, timeoutMs: number = 15000): Promise<{ state: 'SUCCESS' | 'ERROR'; error?: string }> {
   return new Promise((resolve) => {
-    const unsub = onSnapshot(doc(db, 'mail', docId), (snap) => {
-      const data = snap.data();
-      if (data?.delivery?.state === 'SUCCESS') {
+    const unsub = onSnapshot(
+      doc(db, 'mail', docId),
+      (snap) => {
+        const data = snap.data();
+        if (data?.delivery?.state === 'SUCCESS') {
+          unsub();
+          resolve({ state: 'SUCCESS' });
+        } else if (data?.delivery?.state === 'ERROR') {
+          unsub();
+          resolve({ state: 'ERROR', error: data.delivery.error });
+        }
+        // delivery === undefined means the extension hasn't picked it up yet — keep waiting
+      },
+      (_error) => {
+        // Network/permission error on listener — treat as SUCCESS.
+        // The mail doc was already written; the extension will deliver asynchronously.
         unsub();
         resolve({ state: 'SUCCESS' });
-      } else if (data?.delivery?.state === 'ERROR') {
-        unsub();
-        resolve({ state: 'ERROR', error: data.delivery.error });
       }
-      // delivery === undefined means the extension hasn't picked it up yet — keep waiting
-    });
+    );
 
     // Timeout: treat as SUCCESS — the mail doc was written and the extension will deliver it.
     // This also handles emulator mode where the extension never runs.
