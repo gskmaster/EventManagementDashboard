@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 import {
   ArrowLeft, Award, Download, Mail, Loader2,
   CheckCircle2, Search, Calendar, MapPin, Building2, Palette,
-  CheckSquare, Square, Send,
+  CheckSquare, Square, Send, X,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -200,6 +200,7 @@ export default function CertificateDetail() {
   const [design, setDesign] = useState<CertDesign>(DEFAULT_CERT_DESIGN);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   // Per-row loading
   const [generating, setGenerating] = useState<Set<string>>(new Set());
@@ -628,16 +629,16 @@ export default function CertificateDetail() {
                         <td className="px-4 py-3 text-slate-600 text-xs">{person.email || '—'}</td>
                         <td className="px-4 py-3">
                           {cert?.url ? (
-                            <a href={cert.url} target="_blank" rel="noreferrer"
+                            <button onClick={() => setPreviewUrl(cert.url)}
                               className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium">
                               <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />Lihat PDF
-                            </a>
+                            </button>
                           ) : (
                             <span className="text-xs text-slate-400">Belum digenerate</span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          {cert?.emailStatus === 'sent' ? (
+                          {cert?.emailStatus === 'sent' || (!cert?.emailStatus && cert?.emailSentAt) ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-bold uppercase tracking-wider border border-emerald-100">
                               <CheckCircle2 className="w-2.5 h-2.5" /> Terkirim
                             </span>
@@ -645,8 +646,6 @@ export default function CertificateDetail() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 text-rose-600 rounded-full text-[9px] font-bold uppercase tracking-wider border border-rose-100">
                               Gagal
                             </span>
-                          ) : cert?.emailSentAt ? (
-                            <span className="text-[10px] text-slate-400">{formatTs(cert.emailSentAt)}</span>
                           ) : (
                             <span className="text-[9px] font-bold text-slate-300 uppercase tracking-wider">—</span>
                           )}
@@ -689,6 +688,30 @@ export default function CertificateDetail() {
           onSave={d => setDesign(d)}
           onClose={() => setDesignModalOpen(false)}
         />
+      )}
+
+      {/* PDF Preview Modal */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
+          onClick={() => setPreviewUrl(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <span className="text-sm font-semibold text-slate-700">Preview Sertifikat</span>
+              <div className="flex items-center gap-2">
+                <a href={previewUrl} target="_blank" rel="noreferrer"
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 bg-indigo-50 rounded-lg transition-colors">
+                  Buka di Tab Baru
+                </a>
+                <button onClick={() => setPreviewUrl(null)}
+                  className="p-1.5 hover:bg-slate-200 rounded-lg transition-colors">
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+            </div>
+            <iframe src={previewUrl} className="flex-1 w-full" title="Sertifikat PDF" />
+          </div>
+        </div>
       )}
 
       {/* Bulk email modal */}
