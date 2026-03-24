@@ -74,22 +74,28 @@ interface BatchProgress {
  */
 function waitForEmailDelivery(docId: string, timeoutMs: number = 15000): Promise<{ state: 'SUCCESS' | 'ERROR'; error?: string }> {
   return new Promise((resolve) => {
+    console.log(`[waitForEmailDelivery] Watching mail/${docId} for delivery state...`);
+
     const unsub = onSnapshot(
       doc(db, 'mail', docId),
       (snap) => {
         const data = snap.data();
+        console.log(`[waitForEmailDelivery] mail/${docId} snapshot:`, JSON.stringify(data?.delivery ?? null));
         if (data?.delivery?.state === 'SUCCESS') {
+          console.log(`[waitForEmailDelivery] mail/${docId} → SUCCESS`);
           unsub();
           resolve({ state: 'SUCCESS' });
         } else if (data?.delivery?.state === 'ERROR') {
+          console.error(`[waitForEmailDelivery] mail/${docId} → ERROR:`, data.delivery.error);
           unsub();
           resolve({ state: 'ERROR', error: data.delivery.error });
         }
         // delivery === undefined means the extension hasn't picked it up yet — keep waiting
       },
-      (_error) => {
+      (error) => {
         // Network/permission error on listener — treat as SUCCESS.
         // The mail doc was already written; the extension will deliver asynchronously.
+        console.warn(`[waitForEmailDelivery] mail/${docId} onSnapshot error (treating as SUCCESS):`, error);
         unsub();
         resolve({ state: 'SUCCESS' });
       }
@@ -98,6 +104,7 @@ function waitForEmailDelivery(docId: string, timeoutMs: number = 15000): Promise
     // Timeout: treat as SUCCESS — the mail doc was written and the extension will deliver it.
     // This also handles emulator mode where the extension never runs.
     setTimeout(() => {
+      console.warn(`[waitForEmailDelivery] mail/${docId} timed out after ${timeoutMs}ms — treating as SUCCESS`);
       unsub();
       resolve({ state: 'SUCCESS' });
     }, timeoutMs);
@@ -121,6 +128,7 @@ export async function sendBatchEmail(
     const batch = recipients.slice(i, i + BATCH_SIZE);
 
     await Promise.all(batch.map(async (r) => {
+      console.log(`[sendBatchEmail] Processing recipient: id=${r.id}, email=${r.email}, collection=${r.collectionPath}`);
       try {
         const html = resolveTemplate(template.body, r.variables);
         const subject = resolveTemplate(template.subject, r.variables);
@@ -130,19 +138,24 @@ export async function sendBatchEmail(
           to: r.email,
           message: { subject, html },
         });
+        console.log(`[sendBatchEmail] mail doc created: ${mailRef.id} for ${r.email}`);
 
         // 2. Wait for delivery status (resolves SUCCESS on timeout — see waitForEmailDelivery)
         const deliveryResult = await waitForEmailDelivery(mailRef.id);
+        console.log(`[sendBatchEmail] deliveryResult for ${r.id}:`, deliveryResult);
 
         if (deliveryResult.state === 'SUCCESS') {
+          console.log(`[sendBatchEmail] Writing 'sent' to ${r.collectionPath}/${r.id} field=${emailStatusField}`);
           await setDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
             [emailStatusField]: 'sent',
             lastEmailAt: new Date().toISOString(),
             emailError: null,
           }, { merge: true });
+          console.log(`[sendBatchEmail] ✓ sent status saved for ${r.id}`);
           progress?.onSuccess?.(r.id);
         } else {
+          console.warn(`[sendBatchEmail] Writing 'failed' to ${r.collectionPath}/${r.id}:`, deliveryResult.error);
           await setDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
             [emailStatusField]: 'failed',
@@ -152,7 +165,7 @@ export async function sendBatchEmail(
           progress?.onError?.(r.id, deliveryResult.error || 'Terjadi kesalahan pada server email');
         }
       } catch (err: any) {
-        console.error(`Failed to trigger email to ${r.id}:`, err);
+        console.error(`[sendBatchEmail] Exception for ${r.id} (${r.email}):`, err);
 
         try {
           await setDoc(doc(db, r.collectionPath, r.id), {
