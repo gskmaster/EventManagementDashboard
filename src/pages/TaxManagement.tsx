@@ -4,7 +4,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import Layout from '../components/Layout';
 import {
-  Calendar, MapPin, User, Building2, ChevronRight,
+  Calendar, MapPin, User, Building2, ChevronRight, ChevronLeft,
   Search, FileText, Loader2,
 } from 'lucide-react';
 
@@ -24,6 +24,8 @@ export default function TaxManagement() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -42,6 +44,12 @@ export default function TaxManagement() {
     (p.name || '').toLowerCase().includes(search.toLowerCase()) ||
     (p.kabupaten || '').toLowerCase().includes(search.toLowerCase()) ||
     (p.pic || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  const paginated = filtered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
 
   const getStatusColor = (status: string) => {
@@ -64,7 +72,7 @@ export default function TaxManagement() {
             type="text"
             placeholder="Cari proyek, lokasi, atau PIC..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
             className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm bg-white"
           />
         </div>
@@ -80,8 +88,9 @@ export default function TaxManagement() {
             <p className="text-xs mt-1">Hanya proyek berstatus On Going dan Done yang ditampilkan.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map(project => (
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {paginated.map(project => (
               <div
                 key={project.id}
                 onClick={() => navigate(`/tax-management/${project.id}`)}
@@ -115,6 +124,32 @@ export default function TaxManagement() {
               </div>
             ))}
           </div>
+
+          {/* Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white px-6 py-4 rounded-xl border border-slate-200 mt-6 shadow-sm">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                Halaman {currentPage} dari {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  className="p-2 hover:bg-slate-50 rounded-lg border border-slate-200 disabled:opacity-30 transition-all group"
+                >
+                  <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:text-indigo-600" />
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  className="p-2 hover:bg-slate-50 rounded-lg border border-slate-200 disabled:opacity-30 transition-all group"
+                >
+                  <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-indigo-600" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
         )}
       </div>
     </Layout>
