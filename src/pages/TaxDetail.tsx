@@ -639,7 +639,10 @@ export default function TaxDetail() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button
-                              onClick={() => openUploadModal(person.id, activeTab.slice(0,-1) as any, person.fullName)}
+                              onClick={() => {
+                                const typeMap: Record<TaxTab, PersonType> = { speakers: 'speaker', ushers: 'usher', liaisons: 'lo', peserta: 'participant' };
+                                openUploadModal(person.id, typeMap[activeTab], person.fullName);
+                              }}
                               className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-all"
                             >
                               <FileUp className="w-4 h-4" />

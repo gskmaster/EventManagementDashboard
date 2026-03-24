@@ -1,4 +1,4 @@
-import { doc, getDoc, addDoc, collection, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
 export interface TemplateVariables {
@@ -126,31 +126,31 @@ export async function sendBatchEmail(
         const deliveryResult = await waitForEmailDelivery(mailRef.id);
 
         if (deliveryResult.state === 'SUCCESS') {
-          await updateDoc(doc(db, r.collectionPath, r.id), {
+          await setDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
             [emailStatusField]: 'sent',
             lastEmailAt: new Date().toISOString(),
             emailError: null,
-          });
+          }, { merge: true });
           progress?.onSuccess?.(r.id);
         } else {
-          await updateDoc(doc(db, r.collectionPath, r.id), {
+          await setDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
             [emailStatusField]: 'failed',
             lastEmailAt: new Date().toISOString(),
             emailError: deliveryResult.error || 'Terjadi kesalahan pada server email',
-          });
+          }, { merge: true });
           progress?.onError?.(r.id, deliveryResult.error || 'Terjadi kesalahan pada server email');
         }
       } catch (err: any) {
         console.error(`Failed to trigger email to ${r.id}:`, err);
 
         try {
-          await updateDoc(doc(db, r.collectionPath, r.id), {
+          await setDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
             [emailStatusField]: 'failed',
             emailError: err.message
-          });
+          }, { merge: true });
         } catch (updateErr) {
           console.error("Failed to update error status in Firestore:", updateErr);
         }
