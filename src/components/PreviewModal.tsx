@@ -10,10 +10,9 @@ interface PreviewModalProps {
 export default function PreviewModal({ url, onClose, title = 'Preview Dokumen' }: PreviewModalProps) {
   if (!url) return null;
 
-  const isPdf = url.toLowerCase().includes('.pdf') || 
+  const isPdf = url.toLowerCase().split('?')[0].endsWith('.pdf') || 
                 url.includes('application/pdf') || 
-                url.includes('.PDF') || 
-                url.toLowerCase().split('?')[0].endsWith('.pdf');
+                url.toLowerCase().includes('pdf');
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">

@@ -3,12 +3,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, order
 import { db } from '../firebase';
 import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
-import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import TextAlign from '@tiptap/extension-text-align';
-import { TextStyle } from '@tiptap/extension-text-style';
-import Color from '@tiptap/extension-color';
+import RichTextEditor from '../components/RichTextEditor';
 import {
   Mail, Plus, Search, Trash2, Save, X, ChevronRight, ArrowLeft,
   Bold, Italic, UnderlineIcon, AlignLeft, AlignCenter, AlignRight,
@@ -36,125 +31,7 @@ const VARIABLES = [
   { label: 'QR Code', value: '{{qrCodeUrl}}' },
 ];
 
-// ── Rich Text Toolbar ──────────────────────────────────────────────────────────
-function ToolbarButton({
-  onClick, active, title, children,
-}: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      title={title}
-      className={`p-1.5 rounded flex-shrink-0 transition-colors ${active
-        ? 'bg-indigo-100 text-indigo-700'
-        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Divider() {
-  return <span className="w-px h-5 bg-slate-200 mx-0.5 self-center flex-shrink-0" />;
-}
-
-function RichTextEditor({ value, onChange }: { value: string; onChange: (html: string) => void }) {
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle,
-      Color,
-    ],
-    content: value,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
-  });
-
-  useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '', { emitUpdate: false });
-    }
-  }, [value, editor]);
-
-  const insertVariable = useCallback((variable: string) => {
-    editor?.chain().focus().insertContent(variable).run();
-  }, [editor]);
-
-  if (!editor) return null;
-
-  return (
-    <div className="border border-slate-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
-      {/* Toolbar — scrollable on mobile */}
-      <div className="overflow-x-auto border-b border-slate-200 bg-slate-50">
-        <div className="flex items-center gap-0.5 px-2 py-1.5 min-w-max">
-          <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
-            <Bold className="w-4 h-4" />
-          </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic">
-            <Italic className="w-4 h-4" />
-          </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
-            <UnderlineIcon className="w-4 h-4" />
-          </ToolbarButton>
-
-          <Divider />
-
-          <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
-            <Heading1 className="w-4 h-4" />
-          </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
-            <Heading2 className="w-4 h-4" />
-          </ToolbarButton>
-
-          <Divider />
-
-          <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet List">
-            <List className="w-4 h-4" />
-          </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered List">
-            <ListOrdered className="w-4 h-4" />
-          </ToolbarButton>
-
-          <Divider />
-
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Rata Kiri">
-            <AlignLeft className="w-4 h-4" />
-          </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Tengah">
-            <AlignCenter className="w-4 h-4" />
-          </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Rata Kanan">
-            <AlignRight className="w-4 h-4" />
-          </ToolbarButton>
-
-          <Divider />
-
-          <Tag className="w-3.5 h-3.5 text-slate-400 ml-1 flex-shrink-0" />
-          <span className="text-[11px] font-semibold text-slate-400 uppercase mx-1 flex-shrink-0">Variabel</span>
-          {VARIABLES.map((v) => (
-            <button
-              key={v.value}
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); insertVariable(v.value); }}
-              title={`Sisipkan ${v.label}`}
-              className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors whitespace-nowrap flex-shrink-0"
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Editor area */}
-      <EditorContent
-        editor={editor}
-        className="prose prose-sm max-w-none min-h-[240px] px-4 py-3 focus:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[220px]"
-      />
-    </div>
-  );
-}
+// ── Main Page ──────────────────────────────────────────────────────────────────
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 const EMPTY_FORM = { name: '', description: '', subject: '', body: '' };
@@ -453,6 +330,7 @@ export default function EmailTemplates() {
             <RichTextEditor
               value={form.body}
               onChange={body => setForm(f => ({ ...f, body }))}
+              variables={VARIABLES}
             />
           </div>
 

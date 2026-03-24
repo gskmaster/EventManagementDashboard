@@ -1,106 +1,151 @@
-import React, { useRef, useEffect } from 'react';
-import { Bold, Italic, Underline, List, ListOrdered, Type } from 'lucide-react';
+import React, { useEffect, useCallback } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import {
+  Bold, Italic, Underline as UnderlineIcon, AlignLeft, AlignCenter, AlignRight,
+  List, ListOrdered, Heading1, Heading2, Tag, Type
+} from 'lucide-react';
 
 interface Props {
   value: string;
   onChange: (html: string) => void;
   minHeight?: string;
+  variables?: { label: string; value: string } [];
 }
 
-/**
- * Simple WYSIWYG editor built on contentEditable + document.execCommand.
- * No external dependencies. Pass a `key` prop from the parent to reset content.
- */
-export default function RichTextEditor({ value, onChange, minHeight = '360px' }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Set initial content only on mount. Parent must change `key` to reset.
-  useEffect(() => {
-    if (ref.current) ref.current.innerHTML = value;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const cmd = (command: string, val?: string) => {
-    document.execCommand(command, false, val);
-    if (ref.current) onChange(ref.current.innerHTML);
-    ref.current?.focus();
-  };
-
-  // onMouseDown + preventDefault keeps editor focus when clicking toolbar buttons
-  const Btn = ({
-    title,
-    onClick,
-    children,
-  }: {
-    title: string;
-    onClick: () => void;
-    children: React.ReactNode;
-  }) => (
+function ToolbarButton({
+  onClick, active, title, children,
+}: { onClick: () => void; active?: boolean; title: string; children: React.ReactNode }) {
+  return (
     <button
       type="button"
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
       title={title}
-      onMouseDown={e => {
-        e.preventDefault();
-        onClick();
-      }}
-      className="p-1.5 rounded text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
+      className={`p-1.5 rounded flex-shrink-0 transition-colors ${active
+        ? 'bg-indigo-100 text-indigo-700'
+        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+      }`}
     >
       {children}
     </button>
   );
+}
+
+function Divider() {
+  return <span className="w-px h-5 bg-slate-200 mx-0.5 self-center flex-shrink-0" />;
+}
+
+export default function RichTextEditor({ value, onChange, minHeight = '240px', variables = [] }: Props) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextStyle,
+      Color,
+    ],
+    content: value,
+    onUpdate: ({ editor }) => {
+      onChange(editor.getHTML());
+    },
+  });
+
+  // Keep editor content in sync with value prop
+  useEffect(() => {
+    if (editor && value !== editor.getHTML()) {
+      editor.commands.setContent(value || '', { emitUpdate: false });
+    }
+  }, [value, editor]);
+
+  const insertVariable = useCallback((variable: string) => {
+    editor?.chain().focus().insertContent(variable).run();
+  }, [editor]);
+
+  if (!editor) return null;
 
   return (
-    <div className="border border-slate-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500">
+    <div className="border border-slate-300 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all bg-white">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-slate-50 border-b border-slate-200">
-        <Btn title="Bold (Ctrl+B)" onClick={() => cmd('bold')}>
-          <Bold className="w-4 h-4" />
-        </Btn>
-        <Btn title="Italic (Ctrl+I)" onClick={() => cmd('italic')}>
-          <Italic className="w-4 h-4" />
-        </Btn>
-        <Btn title="Underline (Ctrl+U)" onClick={() => cmd('underline')}>
-          <Underline className="w-4 h-4" />
-        </Btn>
-        <div className="w-px h-4 bg-slate-300 mx-1" />
-        <Btn title="Heading 2" onClick={() => cmd('formatBlock', 'h2')}>
-          <span className="text-xs font-bold leading-none px-0.5">H2</span>
-        </Btn>
-        <Btn title="Heading 3" onClick={() => cmd('formatBlock', 'h3')}>
-          <span className="text-xs font-bold leading-none px-0.5">H3</span>
-        </Btn>
-        <Btn title="Normal text" onClick={() => cmd('formatBlock', 'p')}>
-          <Type className="w-4 h-4" />
-        </Btn>
-        <div className="w-px h-4 bg-slate-300 mx-1" />
-        <Btn title="Bullet list" onClick={() => cmd('insertUnorderedList')}>
-          <List className="w-4 h-4" />
-        </Btn>
-        <Btn title="Numbered list" onClick={() => cmd('insertOrderedList')}>
-          <ListOrdered className="w-4 h-4" />
-        </Btn>
+      <div className="overflow-x-auto border-b border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-0.5 px-2 py-1.5 min-w-max">
+          <ToolbarButton onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')} title="Bold">
+            <Bold className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleItalic().run()} active={editor.isActive('italic')} title="Italic">
+            <Italic className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleUnderline().run()} active={editor.isActive('underline')} title="Underline">
+            <UnderlineIcon className="w-4 h-4" />
+          </ToolbarButton>
+
+          <Divider />
+
+          <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} active={editor.isActive('heading', { level: 1 })} title="Heading 1">
+            <Heading1 className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} active={editor.isActive('heading', { level: 2 })} title="Heading 2">
+            <Heading2 className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setParagraph().run()} active={editor.isActive('paragraph')} title="Paragraph">
+            <Type className="w-4 h-4" />
+          </ToolbarButton>
+
+          <Divider />
+
+          <ToolbarButton onClick={() => editor.chain().focus().toggleBulletList().run()} active={editor.isActive('bulletList')} title="Bullet List">
+            <List className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().toggleOrderedList().run()} active={editor.isActive('orderedList')} title="Ordered List">
+            <ListOrdered className="w-4 h-4" />
+          </ToolbarButton>
+
+          <Divider />
+
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })} title="Align Left">
+            <AlignLeft className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('center').run()} active={editor.isActive({ textAlign: 'center' })} title="Align Center">
+            <AlignCenter className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setTextAlign('right').run()} active={editor.isActive({ textAlign: 'right' })} title="Align Right">
+            <AlignRight className="w-4 h-4" />
+          </ToolbarButton>
+
+          {variables.length > 0 && (
+            <>
+              <Divider />
+              <div className="flex items-center gap-1.5 ml-1 flex-shrink-0">
+                <Tag className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Variabel:</span>
+                <div className="flex gap-1">
+                  {variables.map((v) => (
+                    <button
+                      key={v.value}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); insertVariable(v.value); }}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Editor area */}
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={() => {
-          if (ref.current) onChange(ref.current.innerHTML);
-        }}
-        style={{ minHeight }}
-        className="
-          px-4 py-3 text-sm text-slate-800 outline-none overflow-auto leading-relaxed
-          [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-slate-900 [&_h2]:mt-4 [&_h2]:mb-2
-          [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-slate-800 [&_h3]:mt-3 [&_h3]:mb-1
-          [&_p]:mb-2
-          [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-2
-          [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-2
-          [&_li]:mb-0.5
-          [&_strong]:font-semibold
-        "
-      />
+      <div className="bg-white">
+        <EditorContent
+          editor={editor}
+          className="prose prose-sm max-w-none px-4 py-3 focus:outline-none [&_.ProseMirror]:outline-none"
+          style={{ minHeight }}
+        />
+      </div>
     </div>
   );
 }

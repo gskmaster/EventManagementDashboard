@@ -102,19 +102,20 @@ function waitForEmailDelivery(docId: string, timeoutMs: number = 15000): Promise
 export async function sendBatchEmail(
   recipients: Array<{ id: string; email: string; variables: TemplateVariables; collectionPath: string; projectId: string }>,
   template: { subject: string; body: string },
-  progress?: BatchProgress
+  progress?: BatchProgress,
+  emailStatusField: string = 'emailStatus'
 ) {
   const BATCH_SIZE = 3; // Reduced batch size because we wait for delivery
   const WAIT_MS = 500;
 
   for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
     const batch = recipients.slice(i, i + BATCH_SIZE);
-    
+
     await Promise.all(batch.map(async (r) => {
       try {
         const html = resolveTemplate(template.body, r.variables);
         const subject = resolveTemplate(template.subject, r.variables);
-        
+
         // 1. Add to mail collection
         const mailRef = await addDoc(collection(db, 'mail'), {
           to: r.email,
@@ -127,7 +128,7 @@ export async function sendBatchEmail(
         if (deliveryResult.state === 'SUCCESS') {
           await updateDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
-            emailStatus: 'sent',
+            [emailStatusField]: 'sent',
             lastEmailAt: new Date().toISOString(),
             emailError: null,
           });
@@ -135,7 +136,7 @@ export async function sendBatchEmail(
         } else {
           await updateDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
-            emailStatus: 'failed',
+            [emailStatusField]: 'failed',
             lastEmailAt: new Date().toISOString(),
             emailError: deliveryResult.error || 'Terjadi kesalahan pada server email',
           });
@@ -143,12 +144,11 @@ export async function sendBatchEmail(
         }
       } catch (err: any) {
         console.error(`Failed to trigger email to ${r.id}:`, err);
-        
+
         try {
-          // Update status as failed
           await updateDoc(doc(db, r.collectionPath, r.id), {
             projectId: r.projectId,
-            emailStatus: 'failed',
+            [emailStatusField]: 'failed',
             emailError: err.message
           });
         } catch (updateErr) {
