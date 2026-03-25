@@ -761,7 +761,7 @@ export default function Payments() {
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           {details.npwpUrl ? (
                             <button
-                              onClick={() => window.open(details.npwpUrl, '_blank')}
+                              onClick={() => setReceiptPopupUrl(details.npwpUrl)}
                               className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 rounded-md transition-colors"
                               title="Lihat File NPWP"
                             >
