@@ -28,6 +28,7 @@ export default function PublicPaymentRegistration() {
     email: '',
     amount: '',
     receiptFile: null as File | null,
+    npwpFile: null as File | null,
   });
 
   useEffect(() => {
@@ -79,8 +80,8 @@ export default function PublicPaymentRegistration() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, files } = e.target;
-    if (name === 'receiptFile' && files) {
-      setFormData(prev => ({ ...prev, receiptFile: files[0] }));
+    if ((name === 'receiptFile' || name === 'npwpFile') && files) {
+      setFormData(prev => ({ ...prev, [name]: files[0] }));
     } else {
       setFormData(prev => ({ ...prev, [name]: e.target.value }));
     }
@@ -90,8 +91,8 @@ export default function PublicPaymentRegistration() {
     e.preventDefault();
     if (!projectId) return;
 
-    if (!formData.kecamatan || !formData.desa || !formData.transferpic || !formData.email || !formData.amount || !formData.receiptFile) {
-      setError('Silakan lengkapi semua data dan unggah bukti transfer.');
+    if (!formData.kecamatan || !formData.desa || !formData.transferpic || !formData.email || !formData.amount || !formData.receiptFile || !formData.npwpFile) {
+      setError('Silakan lengkapi semua data, unggah bukti transfer, dan file NPWP.');
       return;
     }
 
@@ -119,6 +120,11 @@ export default function PublicPaymentRegistration() {
       const snapshot = await uploadBytes(storageRef, formData.receiptFile);
       const receiptUrl = await getDownloadURL(snapshot.ref);
 
+      // Upload NPWP to storage
+      const npwpRef = ref(storage, `npwp_public/${projectId}/${institutionId}_${Date.now()}`);
+      const npwpSnapshot = await uploadBytes(npwpRef, formData.npwpFile!);
+      const npwpUrl = await getDownloadURL(npwpSnapshot.ref);
+
       // Update project.payments JSON blob with status: 'approval'
       const projRef = doc(db, 'projects', projectId);
       const projSnap = await getDoc(projRef);
@@ -133,6 +139,7 @@ export default function PublicPaymentRegistration() {
           kecamatan: formData.kecamatan,
           desa: formData.desa,
           receiptUrl,
+          npwpUrl,
           updatedAt: new Date().toISOString(),
         };
         await updateDoc(projRef, { payments: JSON.stringify(currentPayments) });
@@ -149,6 +156,7 @@ export default function PublicPaymentRegistration() {
         email: formData.email,
         amount: formData.amount,
         receiptUrl,
+        npwpUrl,
         status: 'pending',
         createdAt: new Date().toISOString(),
       });
@@ -374,6 +382,36 @@ export default function PublicPaymentRegistration() {
                     <p className="text-xs text-slate-500">PNG, JPG, PDF up to 5MB</p>
                     {formData.receiptFile && (
                       <p className="text-sm font-medium text-indigo-600 mt-2">{formData.receiptFile.name}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* NPWP */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  File NPWP <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-slate-300 border-dashed rounded-xl hover:border-indigo-400 transition-colors">
+                  <div className="space-y-1 text-center">
+                    <Upload className="mx-auto h-12 w-12 text-slate-400" />
+                    <div className="flex text-sm text-slate-600">
+                      <label className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                        <span>Pilih file</span>
+                        <input
+                          type="file"
+                          name="npwpFile"
+                          accept="image/*,.pdf"
+                          onChange={handleChange}
+                          className="sr-only"
+                          required
+                        />
+                      </label>
+                      <p className="pl-1 text-slate-500">atau tarik dan lepas</p>
+                    </div>
+                    <p className="text-xs text-slate-500">PNG, JPG, PDF up to 5MB</p>
+                    {formData.npwpFile && (
+                      <p className="text-sm font-medium text-indigo-600 mt-2">{formData.npwpFile.name}</p>
                     )}
                   </div>
                 </div>
