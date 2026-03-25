@@ -78,11 +78,12 @@ export default function Payments() {
       const result = await fn({ imageUrl: npwpUrl, projectId: selectedProject!.id, institutionId: instId }) as any;
       const npwpNumber = result.data?.npwpNumber;
       if (npwpNumber) {
-        setSelectedProject((prev: any) => {
-          const payments = JSON.parse(prev.payments || '{}');
-          payments[instId] = { ...payments[instId], npwpNumber };
-          return { ...prev, payments: JSON.stringify(payments) };
-        });
+        // Save directly to Firestore
+        const currentPayments = JSON.parse(selectedProject!.payments || '{}');
+        currentPayments[instId] = { ...currentPayments[instId], npwpNumber };
+        const paymentsString = JSON.stringify(currentPayments);
+        await updateDoc(doc(db, 'projects', selectedProject!.id), { payments: paymentsString });
+        setSelectedProject((prev: any) => ({ ...prev, payments: paymentsString }));
         showToast(`NPWP berhasil diekstrak: ${npwpNumber}`, 'success');
       } else {
         showToast('NPWP tidak terdeteksi pada file ini.', 'error');
