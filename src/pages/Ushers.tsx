@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { db, storage, auth } from '../firebase';
 import {
   collection,
@@ -15,6 +16,7 @@ import Layout from '../components/Layout';
 import {
   Search,
   Plus,
+  Download,
   FileText,
   X,
   Loader2,
@@ -178,6 +180,25 @@ export default function Ushers() {
     u.nik.includes(searchTerm)
   );
 
+  const handleExport = () => {
+    const rows = filtered.map((u, i) => ({
+      'No.': i + 1,
+      'Nama Lengkap': u.fullName,
+      'NIK': u.nik,
+      'Email': u.email,
+      'No. HP': u.mobilePhone,
+      'Nama Bank': u.bankName || '',
+      'No. Rekening': u.accountNumber || '',
+      'Nama Pemilik Rekening': u.accountName || '',
+      'Cabang Bank': u.bankBranch || '',
+      'Jumlah Proyek': u.projectIds?.length || 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Usher');
+    XLSX.writeFile(wb, `usher_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -186,6 +207,10 @@ export default function Ushers() {
             <h1 className="text-2xl font-bold text-slate-900 mb-1">Manajemen Usher</h1>
             <p className="text-slate-500">Kelola usher acara dan penugasan proyek.</p>
           </div>
+          <button onClick={handleExport} className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium">
+            <Download className="w-4 h-4 mr-2" />
+            Ekspor
+          </button>
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm font-medium"

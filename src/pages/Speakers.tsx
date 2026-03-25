@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { db, storage, auth } from '../firebase';
 import { 
   collection, 
@@ -239,11 +240,32 @@ export default function Speakers() {
     }
   };
 
-  const filteredSpeakers = speakers.filter(s => 
+  const filteredSpeakers = speakers.filter(s =>
     s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.nik.includes(searchTerm)
   );
+
+  const handleExport = () => {
+    const rows = filteredSpeakers.map((s, i) => ({
+      'No.': i + 1,
+      'Nama Lengkap': s.fullName,
+      'NIK': s.nik,
+      'Email': s.email,
+      'No. Telepon': s.phoneNumber,
+      'Institusi': s.institution || '',
+      'Keahlian': (s.expertise || []).join(', '),
+      'Nama Bank': s.bankName || '',
+      'No. Rekening': s.bankAccount || '',
+      'Cabang Bank': s.bankBranch || '',
+      'Nama Pemilik Rekening': s.accountName || '',
+      'Jumlah Proyek': s.projectIds?.length || 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Narasumber');
+    XLSX.writeFile(wb, `narasumber_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
 
   return (
     <Layout>
@@ -255,7 +277,7 @@ export default function Speakers() {
           <p className="text-slate-500">Kelola narasumber acara, keahlian, dan penugasan proyek.</p>
         </div>
         <div className="flex gap-3">
-          <button className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium">
+          <button onClick={handleExport} className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium">
             <Download className="w-4 h-4 mr-2" />
             Ekspor
           </button>
@@ -306,7 +328,7 @@ export default function Speakers() {
               <Filter className="w-4 h-4 mr-2" />
               Filter
             </button>
-            <button className="inline-flex items-center px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
+            <button onClick={handleExport} className="inline-flex items-center px-4 py-2 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium">
               <Download className="w-4 h-4 mr-2" />
               Ekspor
             </button>

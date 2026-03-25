@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { collection, query, getDocs, doc, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../components/AuthContext';
@@ -6,7 +7,7 @@ import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
 import { locations } from '../data/locations';
-import { ArrowLeft, Calendar, MapPin, User, Check, X, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, UserCheck, UserX, Clock, QrCode, Edit } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, User, Check, X, Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, UserCheck, UserX, Clock, QrCode, Edit, Download } from 'lucide-react';
 
 export default function Attendance() {
   const { user, profile } = useAuth();
@@ -261,6 +262,25 @@ export default function Attendance() {
 
   const onGoingProjects = projects.filter(p => p.status === 'On Going');
 
+  const handleExport = () => {
+    const rows = sortedAndFilteredPersons.map((p, i) => ({
+      'No.': i + 1,
+      'Nama Lengkap': p.fullName,
+      'NIK': p.nik,
+      'Email': p.email,
+      'No. HP': p.mobilePhone,
+      'Kecamatan': p.kecamatan || '',
+      'Desa': p.desa || '',
+      'Posisi': p.posisi === 'Lainnya' ? p.posisiLainnya : p.posisi || '',
+      'Status Kehadiran': p.attendanceStatus === 'present' ? 'Hadir' : p.attendanceStatus === 'absent' ? 'Absen' : 'Terdaftar',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Peserta');
+    const projectName = selectedProject?.name?.replace(/[^a-z0-9]/gi, '_').toLowerCase() || 'peserta';
+    XLSX.writeFile(wb, `${projectName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const selectedKabupatenData = selectedProject ? locations.find(loc => loc.kabupaten === selectedProject.kabupaten) : null;
   const kecamatanOptions = selectedKabupatenData 
     ? selectedKabupatenData.kecamatan.map(kec => ({ value: kec.name, label: kec.name })) 
@@ -349,7 +369,13 @@ export default function Attendance() {
             <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8">
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-900 mb-2">{selectedProject.name}</h2>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-bold text-slate-900">{selectedProject.name}</h2>
+                    <button onClick={handleExport} className="flex items-center px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm text-sm font-medium">
+                      <Download className="w-4 h-4 mr-1.5" />
+                      Ekspor Excel
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-4 text-sm text-slate-600 mb-4">
                     <div className="flex items-center">
                       <Calendar className="w-4 h-4 mr-1 text-slate-400" />

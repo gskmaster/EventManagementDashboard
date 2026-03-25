@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import { db, storage, auth } from '../firebase';
 import {
   collection,
@@ -15,6 +16,7 @@ import Layout from '../components/Layout';
 import {
   Search,
   Plus,
+  Download,
   FileText,
   X,
   Loader2,
@@ -178,6 +180,25 @@ export default function LiaisonOfficers() {
     o.nik.includes(searchTerm)
   );
 
+  const handleExport = () => {
+    const rows = filtered.map((o, i) => ({
+      'No.': i + 1,
+      'Nama Lengkap': o.fullName,
+      'NIK': o.nik,
+      'Email': o.email,
+      'No. HP': o.mobilePhone,
+      'Nama Bank': o.bankName || '',
+      'No. Rekening': o.accountNumber || '',
+      'Nama Pemilik Rekening': o.accountName || '',
+      'Cabang Bank': o.bankBranch || '',
+      'Jumlah Proyek': o.projectIds?.length || 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Liaison Officer');
+    XLSX.writeFile(wb, `liaison_officer_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -186,6 +207,10 @@ export default function LiaisonOfficers() {
             <h1 className="text-2xl font-bold text-slate-900 mb-1">Manajemen Liaison Officer</h1>
             <p className="text-slate-500">Kelola liaison officer dan penugasan proyek.</p>
           </div>
+          <button onClick={handleExport} className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors shadow-sm font-medium">
+            <Download className="w-4 h-4 mr-2" />
+            Ekspor
+          </button>
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors shadow-sm font-medium"
