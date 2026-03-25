@@ -16,6 +16,12 @@ service firebase.storage {
       allow read: if true;
     }
 
+    // Public Payment Registration: NPWP Uploads
+    match /npwp_public/{projectId}/{fileId} {
+      allow write: if request.resource.size < 5 * 1024 * 1024;
+      allow read: if true;
+    }
+
     // Public Usher Registration: KTP Uploads
     // Read is public so getDownloadURL works for unauthenticated registrants
     match /ktp_ushers/{imageId} {
