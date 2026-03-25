@@ -7,8 +7,9 @@ import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
-import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell, Mail, FileText, ScanLine } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell, Mail, FileText, ScanLine, Download } from 'lucide-react';
 import { locations } from '../data/locations';
+import * as XLSX from 'xlsx';
 
 export default function Payments() {
   const { user, profile } = useAuth();
@@ -92,6 +93,49 @@ export default function Payments() {
     } finally {
       setOcrLoadingIds(prev => { const s = new Set(prev); s.delete(instId); return s; });
     }
+  };
+
+  const handleBulkOcr = async () => {
+    const targets = [...selectedRows].filter(instId => {
+      const details = getPaymentDetails(instId);
+      return details.npwpUrl && !details.npwpNumber;
+    });
+    if (targets.length === 0) {
+      showToast('Tidak ada baris terpilih dengan file NPWP yang belum diekstrak.', 'error');
+      return;
+    }
+    showToast(`Mengekstrak NPWP untuk ${targets.length} baris...`, 'success');
+    await Promise.all(targets.map(instId => {
+      const details = getPaymentDetails(instId);
+      return handleOcr(instId, details.npwpUrl);
+    }));
+  };
+
+  const handleExportExcel = () => {
+    const payments = JSON.parse(selectedProject?.payments || '{}');
+    const exportData = selectedRows.size > 0
+      ? sortedAndFilteredInstitutions.filter(inst => selectedRows.has(inst.id))
+      : sortedAndFilteredInstitutions;
+
+    const rows = exportData.map(inst => {
+      const details = payments[inst.id] || {};
+      return {
+        'Kabupaten': inst.kabupaten || '',
+        'Kecamatan': inst.kecamatan || '',
+        'Desa': inst.desa || '',
+        'Transfer Amount': details.amount ? Number(details.amount) : '',
+        'Payment Status': details.status === 'yes' ? 'Lunas' : details.status === 'approval' ? 'Menunggu Approval' : 'Belum Bayar',
+        'Transfer PIC': details.transferpic || '',
+        'Email': details.email || '',
+        'No. NPWP': details.npwpNumber || '',
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pembayaran');
+    const filename = `pembayaran_${selectedProject?.name || 'export'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, filename);
   };
 
   useEffect(() => {
@@ -612,19 +656,38 @@ export default function Payments() {
               </div>
             </div>
 
-            {selectedRows.size > 0 && (
-              <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 flex items-center justify-between">
-                <span className="text-indigo-700 font-medium">
-                  {selectedRows.size} row(s) selected
-                </span>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <span className="text-sm text-slate-500">
+                {selectedRows.size > 0 ? `${selectedRows.size} baris dipilih` : `${sortedAndFilteredInstitutions.length} baris`}
+              </span>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowBulkModal(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+                  title={selectedRows.size > 0 ? 'Export baris terpilih ke Excel' : 'Export semua baris ke Excel'}
                 >
-                  Bulk Update
+                  <Download className="w-4 h-4" />
+                  Export Excel {selectedRows.size > 0 ? `(${selectedRows.size})` : '(Semua)'}
                 </button>
+                {selectedRows.size > 0 && (
+                  <>
+                    <button
+                      onClick={handleBulkOcr}
+                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors"
+                    >
+                      <ScanLine className="w-4 h-4" />
+                      Ekstrak NPWP
+                    </button>
+                    <button
+                      onClick={() => setShowBulkModal(true)}
+                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                    >
+                      Bulk Update
+                    </button>
+                  </>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden overflow-x-auto">
               <table className="min-w-full divide-y divide-slate-200">
