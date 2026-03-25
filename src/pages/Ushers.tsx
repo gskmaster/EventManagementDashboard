@@ -74,6 +74,7 @@ export default function Ushers() {
   const [formData, setFormData] = useState({ ...emptyForm });
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [ktpPopupUrl, setKtpPopupUrl] = useState<string | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -180,6 +181,51 @@ export default function Ushers() {
     u.nik.includes(searchTerm)
   );
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) setSelectedRows(new Set(filtered.map(u => u.id)));
+    else setSelectedRows(new Set());
+  };
+
+  const handleSelectRow = (id: string) => {
+    const newSet = new Set(selectedRows);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedRows(newSet);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRows.size === 0) return;
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.size} usher? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await Promise.all(Array.from(selectedRows).map(id => deleteDoc(doc(db, 'ushers', id))));
+      setSelectedRows(new Set());
+      fetchData();
+    } catch (error) {
+      console.error('Error bulk deleting ushers:', error);
+      alert('Gagal menghapus beberapa usher.');
+    }
+  };
+
+  const handleBulkExport = () => {
+    const selected = filtered.filter(u => selectedRows.has(u.id));
+    const rows = selected.map((u, i) => ({
+      'No.': i + 1,
+      'Nama Lengkap': u.fullName,
+      'NIK': u.nik,
+      'Email': u.email,
+      'No. HP': u.mobilePhone,
+      'Nama Bank': u.bankName || '',
+      'No. Rekening': u.accountNumber || '',
+      'Nama Pemilik Rekening': u.accountName || '',
+      'Cabang Bank': u.bankBranch || '',
+      'Jumlah Proyek': u.projectIds?.length || 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Usher');
+    XLSX.writeFile(wb, `usher_dipilih_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const handleExport = () => {
     const rows = filtered.map((u, i) => ({
       'No.': i + 1,
@@ -255,6 +301,24 @@ export default function Ushers() {
           </div>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedRows.size > 0 && (
+          <div className="bg-violet-50 border border-violet-100 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-violet-700 font-medium text-sm">{selectedRows.size} usher dipilih</span>
+            <div className="flex gap-2">
+              <button onClick={handleBulkExport} className="flex items-center px-3 py-1.5 text-sm font-medium text-violet-700 bg-white border border-violet-200 rounded-lg hover:bg-violet-50 transition-colors">
+                <Download className="w-4 h-4 mr-1.5" /> Ekspor Dipilih
+              </button>
+              <button onClick={handleBulkDelete} className="flex items-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                <Trash2 className="w-4 h-4 mr-1.5" /> Hapus
+              </button>
+              <button onClick={() => setSelectedRows(new Set())} className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
@@ -277,6 +341,14 @@ export default function Ushers() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-4 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                        checked={filtered.length > 0 && selectedRows.size === filtered.length}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Usher</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bank</th>
@@ -286,7 +358,15 @@ export default function Ushers() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filtered.map(usher => (
-                    <tr key={usher.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={usher.id} className={`hover:bg-slate-50/50 transition-colors ${selectedRows.has(usher.id) ? 'bg-violet-50/40' : ''}`}>
+                      <td className="px-4 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                          checked={selectedRows.has(usher.id)}
+                          onChange={() => handleSelectRow(usher.id)}
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center mr-3 text-violet-700 font-bold">

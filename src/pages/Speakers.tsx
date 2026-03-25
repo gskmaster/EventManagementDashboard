@@ -92,6 +92,7 @@ export default function Speakers() {
   });
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [expertiseInput, setExpertiseInput] = useState('');
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchData();
@@ -246,6 +247,56 @@ export default function Speakers() {
     s.nik.includes(searchTerm)
   );
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedRows(new Set(filteredSpeakers.map(s => s.id)));
+    } else {
+      setSelectedRows(new Set());
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    const newSet = new Set(selectedRows);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedRows(newSet);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedRows.size === 0) return;
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRows.size} narasumber? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await Promise.all(Array.from(selectedRows).map(id => deleteDoc(doc(db, 'Speakers', id))));
+      setSelectedRows(new Set());
+      fetchData();
+    } catch (error) {
+      console.error('Error bulk deleting speakers:', error);
+      alert('Gagal menghapus beberapa narasumber.');
+    }
+  };
+
+  const handleBulkExport = () => {
+    const selected = filteredSpeakers.filter(s => selectedRows.has(s.id));
+    const rows = selected.map((s, i) => ({
+      'No.': i + 1,
+      'Nama Lengkap': s.fullName,
+      'NIK': s.nik,
+      'Email': s.email,
+      'No. Telepon': s.phoneNumber,
+      'Institusi': s.institution || '',
+      'Keahlian': (s.expertise || []).join(', '),
+      'Nama Bank': s.bankName || '',
+      'No. Rekening': s.bankAccount || '',
+      'Cabang Bank': s.bankBranch || '',
+      'Nama Pemilik Rekening': s.accountName || '',
+      'Jumlah Proyek': s.projectIds?.length || 0,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Narasumber');
+    XLSX.writeFile(wb, `narasumber_dipilih_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const handleExport = () => {
     const rows = filteredSpeakers.map((s, i) => ({
       'No.': i + 1,
@@ -335,6 +386,24 @@ export default function Speakers() {
           </div>
         </div>
 
+        {/* Bulk Action Bar */}
+        {selectedRows.size > 0 && (
+          <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-indigo-700 font-medium text-sm">{selectedRows.size} narasumber dipilih</span>
+            <div className="flex gap-2">
+              <button onClick={handleBulkExport} className="flex items-center px-3 py-1.5 text-sm font-medium text-indigo-700 bg-white border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors">
+                <Download className="w-4 h-4 mr-1.5" /> Ekspor Dipilih
+              </button>
+              <button onClick={handleBulkDelete} className="flex items-center px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+                <Trash2 className="w-4 h-4 mr-1.5" /> Hapus
+              </button>
+              <button onClick={() => setSelectedRows(new Set())} className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                Batal
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Speakers List */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           {loading ? (
@@ -361,6 +430,14 @@ export default function Speakers() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-4 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        checked={filteredSpeakers.length > 0 && selectedRows.size === filteredSpeakers.length}
+                        onChange={handleSelectAll}
+                      />
+                    </th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Informasi Narasumber</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak & Institusi</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Keahlian</th>
@@ -370,7 +447,15 @@ export default function Speakers() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 italic">
                   {filteredSpeakers.map((speaker) => (
-                    <tr key={speaker.id} className="hover:bg-slate-50/50 transition-colors not-italic">
+                    <tr key={speaker.id} className={`hover:bg-slate-50/50 transition-colors not-italic ${selectedRows.has(speaker.id) ? 'bg-indigo-50/40' : ''}`}>
+                      <td className="px-4 py-4 w-10">
+                        <input
+                          type="checkbox"
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          checked={selectedRows.has(speaker.id)}
+                          onChange={() => handleSelectRow(speaker.id)}
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center">
                           <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center mr-3 text-indigo-700 font-bold">
