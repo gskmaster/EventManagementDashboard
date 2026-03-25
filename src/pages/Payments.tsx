@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, query, getDocs, doc, updateDoc, addDoc, where } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db, storage, functions } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../components/AuthContext';
 import Layout from '../components/Layout';
 import Toast from '../components/Toast';
 import Select from 'react-select';
-import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell, Mail } from 'lucide-react';
+import { Plus, ArrowLeft, Calendar, MapPin, User, Check, X, Search, Building, CreditCard, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Edit2, Upload, Copy, ExternalLink, Bell, Mail, FileText, ScanLine } from 'lucide-react';
 import { locations } from '../data/locations';
 
 export default function Payments() {
@@ -62,8 +63,35 @@ export default function Payments() {
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
   const [inlineEditAmount, setInlineEditAmount] = useState('');
 
+  // OCR State
+  const [ocrLoadingIds, setOcrLoadingIds] = useState<Set<string>>(new Set());
+
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
+  };
+
+  const handleOcr = async (instId: string, npwpUrl: string) => {
+    setOcrLoadingIds(prev => new Set([...prev, instId]));
+    try {
+      const fn = httpsCallable(functions, 'extractNpwp');
+      const result = await fn({ imageUrl: npwpUrl, projectId: selectedProject!.id, institutionId: instId }) as any;
+      const npwpNumber = result.data?.npwpNumber;
+      if (npwpNumber) {
+        setSelectedProject((prev: any) => {
+          const payments = JSON.parse(prev.payments || '{}');
+          payments[instId] = { ...payments[instId], npwpNumber };
+          return { ...prev, payments: JSON.stringify(payments) };
+        });
+        showToast(`NPWP berhasil diekstrak: ${npwpNumber}`, 'success');
+      } else {
+        showToast('NPWP tidak terdeteksi pada file ini.', 'error');
+      }
+    } catch (err) {
+      console.error('OCR error:', err);
+      showToast('Gagal melakukan OCR. Coba lagi.', 'error');
+    } finally {
+      setOcrLoadingIds(prev => { const s = new Set(prev); s.delete(instId); return s; });
+    }
   };
 
   useEffect(() => {
@@ -646,12 +674,14 @@ export default function Payments() {
                     >
                       Transfer PIC <SortIcon column="transferpic" />
                     </th>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100"
                       onClick={() => handleSort('email')}
                     >
                       Email <SortIcon column="email" />
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">NPWP File</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">No. NPWP</th>
                     <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -727,6 +757,44 @@ export default function Payments() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                           {details.email || '-'}
                         </td>
+                        {/* NPWP File */}
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          {details.npwpUrl ? (
+                            <button
+                              onClick={() => window.open(details.npwpUrl, '_blank')}
+                              className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-1.5 rounded-md transition-colors"
+                              title="Lihat File NPWP"
+                            >
+                              <FileText className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-xs">-</span>
+                          )}
+                        </td>
+                        {/* No. NPWP */}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-2">
+                            {details.npwpNumber ? (
+                              <span className="font-mono text-slate-700">{details.npwpNumber}</span>
+                            ) : (
+                              <span className="text-slate-400 text-xs">Belum ada</span>
+                            )}
+                            {details.npwpUrl && (
+                              <button
+                                onClick={() => handleOcr(inst.id, details.npwpUrl)}
+                                disabled={ocrLoadingIds.has(inst.id)}
+                                className="text-teal-600 hover:text-teal-900 bg-teal-50 p-1 rounded-md transition-colors disabled:opacity-50"
+                                title="Ekstrak NPWP via OCR"
+                              >
+                                {ocrLoadingIds.has(inst.id) ? (
+                                  <div className="w-3.5 h-3.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <ScanLine className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                           <div className="flex items-center justify-center space-x-2">
                             {details.email && (
@@ -762,7 +830,7 @@ export default function Payments() {
                   })}
                   {paginatedInstitutions.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
+                      <td colSpan={10} className="px-6 py-8 text-center text-slate-500">
                         No areas found matching your filters.
                       </td>
                     </tr>

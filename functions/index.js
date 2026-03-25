@@ -24,6 +24,7 @@ const vision = require('@google-cloud/vision');
 
 admin.initializeApp();
 const db = admin.firestore();
+const visionClient = new vision.ImageAnnotatorClient();
 
 // ─── Policy version — keep in sync with src/lib/consentLogger.ts ────────────
 const POLICY_VERSION = '1.0';
@@ -320,5 +321,53 @@ exports.extractKTPDataV3 = functions.region('asia-southeast2').https.onRequest(a
   } catch (error) {
     console.error('extractKTPData error:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * extractNpwp — HTTPS callable (authenticated admin/finance)
+ *
+ * Uses Google Cloud Vision to OCR an NPWP file and extract the 15-digit
+ * Indonesian NPWP number (format: XX.XXX.XXX.X-XXX.XXX).
+ * Saves the extracted number back into the project's payments JSON blob.
+ */
+exports.extractNpwp = functions.region('asia-southeast2').https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  }
+
+  const { imageUrl, projectId, institutionId } = data;
+  if (!imageUrl || !projectId || !institutionId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: imageUrl, projectId, institutionId.');
+  }
+
+  try {
+    // Run OCR via Vision API
+    const [result] = await visionClient.textDetection({ image: { source: { imageUri: imageUrl } } });
+    const rawText = result.fullTextAnnotation?.text || result.textAnnotations?.[0]?.description || '';
+
+    // Match Indonesian NPWP: XX.XXX.XXX.X-XXX.XXX (with flexible separators)
+    const npwpRegex = /\d{2}[.\s]?\d{3}[.\s]?\d{3}[.\s]?\d[-.\s]?\d{3}[.\s]?\d{3}/g;
+    const matches = rawText.match(npwpRegex);
+    const npwpNumber = matches ? matches[0].replace(/\s/g, '') : null;
+
+    if (npwpNumber) {
+      // Save back into the project's payments JSON
+      const projRef = db.collection('projects').doc(projectId);
+      const projSnap = await projRef.get();
+      if (projSnap.exists) {
+        const currentPayments = JSON.parse(projSnap.data().payments || '{}');
+        currentPayments[institutionId] = {
+          ...currentPayments[institutionId],
+          npwpNumber,
+        };
+        await projRef.update({ payments: JSON.stringify(currentPayments) });
+      }
+    }
+
+    return { npwpNumber };
+  } catch (err) {
+    console.error('extractNpwp error:', err);
+    throw new functions.https.HttpsError('internal', 'OCR failed: ' + err.message);
   }
 });
