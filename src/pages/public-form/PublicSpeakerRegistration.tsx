@@ -256,11 +256,10 @@ export default function PublicSpeakerRegistration() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Nama Bank <span className="text-red-500">*</span>
+                      Nama Bank
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.bankName}
                       onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -269,11 +268,10 @@ export default function PublicSpeakerRegistration() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Nomor Rekening <span className="text-red-500">*</span>
+                      Nomor Rekening
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.bankAccount}
                       onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -292,11 +290,10 @@ export default function PublicSpeakerRegistration() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Nama Pemilik Rekening <span className="text-red-500">*</span>
+                      Nama Pemilik Rekening
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.accountName}
                       onChange={(e) => setFormData({ ...formData, accountName: e.target.value })}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"

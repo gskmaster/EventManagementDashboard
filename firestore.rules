@@ -215,7 +215,7 @@ service cloud.firestore {
     }
 
     function isValidUsherOrLO(data) {
-      return hasOnlyAllowedFields(['fullName', 'nik', 'mobilePhone', 'email', 'ktpUrl', 'bankName', 'accountNumber', 'accountName', 'bankBranch', 'projectIds', 'createdAt', 'createdBy', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['fullName', 'nik', 'mobilePhone', 'email', 'ktpUrl', 'npwpUrl', 'npwpNumber', 'bankName', 'accountNumber', 'accountName', 'bankBranch', 'projectIds', 'createdAt', 'createdBy', 'updatedAt']) &&
              data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 200 &&
              data.nik is string && data.nik.size() > 0 && data.nik.size() < 50 &&
              data.mobilePhone is string && data.mobilePhone.size() > 0 && data.mobilePhone.size() < 50 &&
@@ -231,7 +231,7 @@ service cloud.firestore {
     }
 
     function isValidSpeaker(data) {
-      return hasOnlyAllowedFields(['nik', 'fullName', 'email', 'phoneNumber', 'institution', 'expertise', 'ktpUrl', 'projectIds', 'bankName', 'bankAccount', 'bankBranch', 'accountName', 'createdAt', 'createdBy', 'updatedAt']) &&
+      return hasOnlyAllowedFields(['nik', 'fullName', 'email', 'phoneNumber', 'institution', 'expertise', 'ktpUrl', 'npwpUrl', 'npwpNumber', 'projectIds', 'bankName', 'bankAccount', 'bankBranch', 'accountName', 'createdAt', 'createdBy', 'updatedAt']) &&
              data.nik is string && data.nik.size() > 0 &&
              data.fullName is string && data.fullName.size() > 0 &&
              data.email is string && isValidEmail(data.email) &&
