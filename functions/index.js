@@ -371,3 +371,42 @@ exports.extractNpwp = functions.region('asia-southeast2').https.onCall(async (da
     throw new functions.https.HttpsError('internal', 'OCR failed: ' + err.message);
   }
 });
+
+/**
+ * extractNpwpPublic — HTTPS onRequest (public, no auth required)
+ *
+ * Accepts a Firebase Storage imageUrl, runs Vision OCR, and returns
+ * the extracted Indonesian NPWP number. Used by public registration forms.
+ */
+exports.extractNpwpPublicV3 = functions.region('asia-southeast2').https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const data = req.body.data || req.body;
+  const { imageUrl } = data;
+
+  if (!imageUrl || typeof imageUrl !== 'string') {
+    res.status(400).json({ error: 'imageUrl is required.' });
+    return;
+  }
+
+  try {
+    const [result] = await visionClient.textDetection({ image: { source: { imageUri: imageUrl } } });
+    const rawText = result.fullTextAnnotation?.text || result.textAnnotations?.[0]?.description || '';
+
+    const npwpRegex = /\d{2}[.\s]?\d{3}[.\s]?\d{3}[.\s]?\d[-.\s]?\d{3}[.\s]?\d{3}/g;
+    const matches = rawText.match(npwpRegex);
+    const npwpNumber = matches ? matches[0].replace(/\s/g, '') : null;
+
+    res.status(200).json({ data: { npwpNumber } });
+  } catch (error) {
+    console.error('extractNpwpPublic error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});

@@ -4,6 +4,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../firebase';
 import { CheckCircle2, FileText, X, Award, Loader2, User } from 'lucide-react';
 import KTPScanButton from '../../components/KTPScanButton';
+import NPWPScanButton from '../../components/NPWPScanButton';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
 import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
 import { logConsent } from '../../lib/consentLogger';
@@ -28,6 +29,8 @@ export default function PublicSpeakerRegistration() {
     bankBranch: '',
     accountName: '',
     ktpUrl: '', // Now populated by scan
+    npwpUrl: '',
+    npwpNumber: '',
   });
   const [expertiseInput, setExpertiseInput] = useState('');
 
@@ -139,6 +142,30 @@ export default function PublicSpeakerRegistration() {
                   onChange={(e) => setFormData({ ...formData, nik: e.target.value })}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Nomor Induk Kependudukan"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">File NPWP</label>
+                <NPWPScanButton
+                  accentColor="indigo"
+                  fileName={formData.fullName}
+                  onExtracted={({ npwpUrl, npwpNumber }) =>
+                    setFormData(prev => ({ ...prev, npwpUrl, npwpNumber }))
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Nomor NPWP
+                </label>
+                <input
+                  type="text"
+                  value={formData.npwpNumber}
+                  onChange={(e) => setFormData({ ...formData, npwpNumber: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Terisi otomatis atau isi manual (opsional)"
                 />
               </div>
 

@@ -5,6 +5,7 @@ import { httpsCallable } from 'firebase/functions';
 import { db, storage, functions, getFunctionUrl } from '../../firebase';
 import { CheckCircle2, FileText, Loader2, Handshake } from 'lucide-react';
 import KTPScanButton from '../../components/KTPScanButton';
+import NPWPScanButton from '../../components/NPWPScanButton';
 import ConsentCheckbox from '../../components/ConsentCheckbox';
 import RecaptchaWidget, { RECAPTCHA_ENABLED } from '../../components/RecaptchaWidget';
 import { logConsent } from '../../lib/consentLogger';
@@ -24,6 +25,8 @@ export default function PublicLORegistration() {
     accountName: '',
     bankBranch: '',
     ktpUrl: '', // Now populated by scan
+    npwpUrl: '',
+    npwpNumber: '',
   });
   const [consentGiven, setConsentGiven] = useState(false);
   const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
@@ -177,6 +180,29 @@ export default function PublicLORegistration() {
                       onChange={(e) => setFormData({ ...formData, nik: e.target.value.replace(/\D/g, '').slice(0, 16) })}
                       className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
                       placeholder="16 digit nomor KTP"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">File NPWP</label>
+                    <NPWPScanButton
+                      accentColor="teal"
+                      fileName={formData.fullName}
+                      onExtracted={({ npwpUrl, npwpNumber }) =>
+                        setFormData(prev => ({ ...prev, npwpUrl, npwpNumber }))
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Nomor NPWP
+                    </label>
+                    <input type="text"
+                      value={formData.npwpNumber}
+                      onChange={(e) => setFormData({ ...formData, npwpNumber: e.target.value })}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                      placeholder="Terisi otomatis atau isi manual (opsional)"
                     />
                   </div>
 
