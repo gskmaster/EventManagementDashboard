@@ -36,6 +36,8 @@ interface LiaisonOfficer {
   mobilePhone: string;
   email: string;
   ktpUrl?: string;
+  npwpUrl?: string;
+  npwpNumber?: string;
   bankName?: string;
   accountNumber?: string;
   accountName?: string;
@@ -74,6 +76,7 @@ export default function LiaisonOfficers() {
   const [formData, setFormData] = useState({ ...emptyForm });
   const [ktpFile, setKtpFile] = useState<File | null>(null);
   const [ktpPopupUrl, setKtpPopupUrl] = useState<string | null>(null);
+  const [npwpPopupUrl, setNpwpPopupUrl] = useState<string | null>(null);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -352,6 +355,7 @@ export default function LiaisonOfficers() {
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Liaison Officer</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Kontak</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Bank</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Dokumen</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Proyek Berlangsung</th>
                     <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                   </tr>
@@ -393,21 +397,38 @@ export default function LiaisonOfficers() {
                         ) : <span className="text-slate-400 italic text-xs">Not provided</span>}
                       </td>
                       <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {officer.ktpUrl ? (
+                            <button
+                              onClick={() => setKtpPopupUrl(officer.ktpUrl)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-lg hover:bg-teal-100 transition-colors"
+                              title="Lihat KTP"
+                            >
+                              <FileText className="w-3.5 h-3.5" /> KTP
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                          {officer.npwpUrl ? (
+                            <button
+                              onClick={() => setNpwpPopupUrl(officer.npwpUrl)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-lg hover:bg-violet-100 transition-colors"
+                              title="Lihat NPWP"
+                            >
+                              <FileText className="w-3.5 h-3.5" /> NPWP
+                            </button>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-teal-50 text-teal-700 font-bold text-xs">
                           {officer.projectIds?.length || 0} Proyek
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end space-x-2">
-                          {officer.ktpUrl && (
-                            <button
-                              onClick={() => setKtpPopupUrl(officer.ktpUrl)}
-                              className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
-                              title="View KTP"
-                            >
-                              <FileText className="w-4 h-4" />
-                            </button>
-                          )}
                           <button
                             onClick={() => handleOpenModal(officer)}
                             className="p-1.5 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
@@ -621,6 +642,30 @@ export default function LiaisonOfficers() {
                 <img src={ktpPopupUrl} alt="KTP" className="w-full rounded-lg object-contain max-h-[70vh]" />
               ) : (
                 <iframe src={ktpPopupUrl} className="w-full h-[70vh] rounded-lg" title="KTP Document" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NPWP Popup */}
+      {npwpPopupUrl && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-slate-900/70" onClick={() => setNpwpPopupUrl(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl overflow-hidden max-w-2xl w-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-violet-600" /> Dokumen NPWP
+              </h2>
+              <button onClick={() => setNpwpPopupUrl(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              {npwpPopupUrl.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i) ? (
+                <img src={npwpPopupUrl} alt="NPWP" className="w-full rounded-lg object-contain max-h-[70vh]" />
+              ) : (
+                <iframe src={npwpPopupUrl} className="w-full h-[70vh] rounded-lg" title="NPWP Document" />
               )}
             </div>
           </div>
