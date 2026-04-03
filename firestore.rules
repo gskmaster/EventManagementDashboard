@@ -185,7 +185,7 @@ service cloud.firestore {
     }
 
     function isValidProject(data) {
-      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'venueId', 'venueIds', 'venues', 'pic', 'kabupaten', 'status', 'payments', 'createdAt', 'createdBy']) &&
+      return hasOnlyAllowedFields(['name', 'startDate', 'endDate', 'venue', 'venueId', 'venueIds', 'venues', 'pic', 'picUserId', 'kabupaten', 'status', 'payments', 'createdAt', 'createdBy', 'updatedAt']) &&
              data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
              data.startDate is string && data.startDate.size() > 0 && data.startDate.size() < 50 &&
              data.endDate is string && data.endDate.size() > 0 && data.endDate.size() < 50 &&
